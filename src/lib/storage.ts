@@ -79,6 +79,73 @@ export function getPast7Days(): string[] {
   return days;
 }
 
+// ─── XP / レベル ───────────────────────────────────────────────
+
+/** 総XP（1完了 = 10 XP） */
+export function getTotalXP(logs: HabitLog[]): number {
+  return logs.length * 10;
+}
+
+/** 現在のレベル（100 XP ごとに1レベル、最低 Lv.1） */
+export function getLevel(logs: HabitLog[]): number {
+  return Math.floor(getTotalXP(logs) / 100) + 1;
+}
+
+/** レベル進捗情報（ホーム・統計画面で使用） */
+export function getLevelProgress(logs: HabitLog[]): {
+  level: number;
+  xpInLevel: number; // 現在レベル内の XP（0〜99）
+  xpForNext: number; // 次レベルまでに必要な XP（常に 100）
+} {
+  const totalXP = getTotalXP(logs);
+  const level = Math.floor(totalXP / 100) + 1;
+  const xpInLevel = totalXP % 100;
+  return { level, xpInLevel, xpForNext: 100 };
+}
+
+// ─── 全体ストリーク ──────────────────────────────────────────────
+
+/** 1つでも習慣を達成した日が何日連続しているか（全体ストリーク） */
+export function getOverallStreak(logs: HabitLog[]): number {
+  const completedDates = [...new Set(logs.map((l) => l.date))].sort((a, b) =>
+    b.localeCompare(a)
+  );
+  if (completedDates.length === 0) return 0;
+
+  let streak = 0;
+  const today = new Date();
+
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    if (completedDates.includes(dateStr)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// ─── 今月の達成率 ────────────────────────────────────────────────
+
+/** 今月（1日〜今日）の全習慣の達成率（%） */
+export function getMonthlyRate(logs: HabitLog[], habits: Habit[]): number {
+  if (habits.length === 0) return 0;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const daysPassed = now.getDate(); // 1〜31
+
+  const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+  const monthLogs = logs.filter((l) => l.date.startsWith(monthStr));
+  const possible = habits.length * daysPassed;
+  return possible > 0 ? Math.round((monthLogs.length / possible) * 100) : 0;
+}
+
+// ─── DayStatus（既存） ───────────────────────────────────────────
+
 export interface DayStatus {
   date: string;       // YYYY-MM-DD
   dayLabel: string;   // 月火水木金土日

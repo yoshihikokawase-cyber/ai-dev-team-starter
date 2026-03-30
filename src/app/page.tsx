@@ -12,16 +12,24 @@ import {
   getWeeklyReport,
   saveWeeklyReport,
   getPast7Days,
+  getOverallStreak,
+  getLevelProgress,
+  getMonthlyRate,
 } from '@/lib/storage';
-import HabitCard from '@/components/HabitCard';
-import AddHabitForm from '@/components/AddHabitForm';
-import WeeklyReport from '@/components/WeeklyReport';
 import Toast from '@/components/Toast';
-import WeeklySummary from '@/components/WeeklySummary';
+import BottomNav, { TabId } from '@/components/BottomNav';
+import HomeTab from '@/components/HomeTab';
+import StatsTab from '@/components/StatsTab';
+import CoachTab from '@/components/CoachTab';
+import SettingsTab from '@/components/SettingsTab';
 
 const MAX_HABITS = 10;
 
 export default function Home() {
+  // ── タブ状態 ──────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<TabId>('home');
+
+  // ── データ状態 ────────────────────────────────────────────────
   const [habits, setHabits] = useState<Habit[]>([]);
   const [logs, setLogs] = useState<HabitLog[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -30,15 +38,17 @@ export default function Home() {
   const [reportError, setReportError] = useState('');
   const [toast, setToast] = useState<{ message: string; isSpecial: boolean } | null>(null);
 
+  // ── 初期ロード ────────────────────────────────────────────────
   useEffect(() => {
     setHabits(getHabits());
     setLogs(getLogs());
     setReport(getWeeklyReport());
   }, []);
 
+  // ── 習慣の追加 ────────────────────────────────────────────────
   function handleAddHabit(name: string, icon: string) {
     if (habits.length >= MAX_HABITS) return;
-    setShowAddForm(false); // 二重送信防止: フォームを先に閉じる
+    setShowAddForm(false); // 二重送信防止：先に閉じる
     const newHabit: Habit = {
       id: crypto.randomUUID(),
       name,
@@ -48,9 +58,9 @@ export default function Home() {
     const updated = [...habits, newHabit];
     setHabits(updated);
     saveHabits(updated);
-    setShowAddForm(false);
   }
 
+  // ── 習慣の削除 ────────────────────────────────────────────────
   function handleDeleteHabit(habitId: string) {
     const updatedHabits = habits.filter((h) => h.id !== habitId);
     const updatedLogs = logs.filter((l) => l.habitId !== habitId);
@@ -62,16 +72,20 @@ export default function Home() {
 
   const handleCloseToast = useCallback(() => setToast(null), []);
 
+  // ── 習慣の完了トグル ──────────────────────────────────────────
   function handleToggle(habitId: string) {
     const today = getToday();
     const alreadyDone = isCompletedToday(habitId, logs);
 
     let updatedLogs: HabitLog[];
+
     if (alreadyDone) {
+      // 取り消し
       updatedLogs = logs.filter(
         (l) => !(l.habitId === habitId && l.date === today)
       );
     } else {
+      // 完了記録
       const newLog: HabitLog = {
         id: crypto.randomUUID(),
         habitId,
@@ -80,23 +94,29 @@ export default function Home() {
       };
       updatedLogs = [...logs, newLog];
 
-      // トースト表示
+      // 全完了かどうかでトーストを分岐
       const nowCompletedCount = habits.filter((h) =>
         isCompletedToday(h.id, updatedLogs)
       ).length;
+
       if (nowCompletedCount === habits.length) {
         setToast({ message: '🎉 全部完了！今日もよくできました！', isSpecial: true });
       } else {
         const habit = habits.find((h) => h.id === habitId);
         if (habit) {
-          setToast({ message: `${habit.icon} ${habit.name} 完了！`, isSpecial: false });
+          setToast({
+            message: `${habit.icon} ${habit.name} 完了！ +10 XP`,
+            isSpecial: false,
+          });
         }
       }
     }
+
     setLogs(updatedLogs);
     saveLogs(updatedLogs);
   }
 
+  // ── AIレポート生成 ────────────────────────────────────────────
   async function handleGenerateReport() {
     if (habits.length === 0) return;
     setLoadingReport(true);
@@ -118,18 +138,14 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ habits: habitStats }),
       });
-
       if (!res.ok) throw new Error('レポート生成に失敗しました');
 
       const data = await res.json();
-      const weekStart = days[0];
-      const weekEnd = days[6];
-
       const newReport: WeeklyReportData = {
         generatedAt: new Date().toISOString(),
         content: data.report,
-        weekStart,
-        weekEnd,
+        weekStart: days[0],
+        weekEnd: days[6],
       };
       setReport(newReport);
       saveWeeklyReport(newReport);
@@ -140,18 +156,16 @@ export default function Home() {
     }
   }
 
-  const today = new Date().toLocaleDateString('ja-JP', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  });
+  // ── 派生値（全タブで共有） ────────────────────────────────────
+  const completedToday = habits.filter((h) => isCompletedToday(h.id, logs)).length;
+  const overallStreak = getOverallStreak(logs);
+  const { level, xpInLevel, xpForNext } = getLevelProgress(logs);
+  const monthlyRate = getMonthlyRate(logs, habits);
 
-  const completedToday = habits.filter((h) =>
-    isCompletedToday(h.id, logs)
-  ).length;
-
+  // ── レンダリング ──────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F0F2F5]">
+      {/* トースト通知 */}
       {toast && (
         <Toast
           message={toast.message}
@@ -159,118 +173,71 @@ export default function Home() {
           onClose={handleCloseToast}
         />
       )}
-      <div className="max-w-md mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">⚡ QuickHabit</h1>
-          <p data-testid="today-date" className="text-sm text-gray-500 mt-1">
-            {today}
-          </p>
-        </header>
 
-        {/* Progress bar */}
-        {habits.length > 0 && (
-          <div
-            data-testid="progress-section"
-            className="bg-white rounded-xl border border-gray-200 p-4 mb-4"
-          >
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>今日の達成</span>
-              <span data-testid="progress-count">
-                {completedToday} / {habits.length}
-              </span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-2">
-              <div
-                data-testid="progress-bar"
-                className="bg-green-400 h-2 rounded-full transition-all"
-                style={{
-                  width:
-                    habits.length > 0
-                      ? `${(completedToday / habits.length) * 100}%`
-                      : '0%',
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Add form */}
-        {showAddForm && (
-          <AddHabitForm
-            onAdd={handleAddHabit}
-            onCancel={() => setShowAddForm(false)}
+      {/* タブコンテンツ（ボトムナビ分の余白 pb-20） */}
+      <div className="pb-20">
+        {activeTab === 'home' && (
+          <HomeTab
+            habits={habits}
+            logs={logs}
+            level={level}
+            xpInLevel={xpInLevel}
+            xpForNext={xpForNext}
+            overallStreak={overallStreak}
+            completedToday={completedToday}
+            report={report}
+            loadingReport={loadingReport}
+            reportError={reportError}
+            showAddForm={showAddForm}
+            canAddMore={habits.length < MAX_HABITS}
+            onToggle={handleToggle}
+            onDelete={handleDeleteHabit}
+            onAddHabit={handleAddHabit}
+            onShowAddForm={() => setShowAddForm(true)}
+            onCancelAddForm={() => setShowAddForm(false)}
+            onGenerateReport={handleGenerateReport}
           />
         )}
 
-        {/* Add button */}
-        {!showAddForm && habits.length < MAX_HABITS && (
-          <button
-            data-testid="show-add-form"
-            onClick={() => setShowAddForm(true)}
-            className="w-full border-2 border-dashed border-gray-300 rounded-xl py-3 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors mb-4 text-sm font-medium"
-          >
-            + 習慣を追加する
-          </button>
+        {activeTab === 'stats' && (
+          <StatsTab
+            habits={habits}
+            logs={logs}
+            level={level}
+            xpInLevel={xpInLevel}
+            xpForNext={xpForNext}
+            overallStreak={overallStreak}
+            monthlyRate={monthlyRate}
+          />
         )}
 
-        {/* Habit list */}
-        {habits.length === 0 && !showAddForm ? (
-          <div
-            data-testid="empty-state"
-            className="text-center py-12 text-gray-400"
-          >
-            <p className="text-4xl mb-3">📋</p>
-            <p className="font-medium">まだ習慣がありません</p>
-            <p className="text-sm mt-1">上のボタンから最初の習慣を追加しましょう</p>
-          </div>
-        ) : (
-          <div
-            data-testid="habit-list"
-            className="flex flex-col gap-3 mb-6"
-          >
-            {habits.map((habit) => (
-              <HabitCard
-                key={habit.id}
-                habit={habit}
-                logs={logs}
-                onToggle={handleToggle}
-                onDelete={handleDeleteHabit}
-              />
-            ))}
-          </div>
+        {activeTab === 'coach' && (
+          <CoachTab
+            habits={habits}
+            logs={logs}
+            report={report}
+            loadingReport={loadingReport}
+            reportError={reportError}
+            onGenerateReport={handleGenerateReport}
+          />
         )}
 
-        {/* Weekly Summary */}
-        {habits.length > 0 && (
-          <WeeklySummary habits={habits} logs={logs} />
-        )}
-
-        {/* AI Report section */}
-        {habits.length > 0 && (
-          <div className="mt-2">
-            <button
-              data-testid="generate-report-btn"
-              onClick={handleGenerateReport}
-              disabled={loadingReport}
-              className="w-full bg-purple-500 text-white rounded-xl py-3 font-semibold hover:bg-purple-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {loadingReport ? '🔄 AIが分析中...' : '🤖 AIレポートを生成する'}
-            </button>
-
-            {reportError && (
-              <p
-                data-testid="report-error"
-                className="text-red-500 text-xs mt-2 text-center"
-              >
-                {reportError}
-              </p>
-            )}
-
-            {report && <WeeklyReport report={report} />}
-          </div>
+        {activeTab === 'settings' && (
+          <SettingsTab
+            habits={habits}
+            logs={logs}
+            showAddForm={showAddForm}
+            canAddMore={habits.length < MAX_HABITS}
+            onAddHabit={handleAddHabit}
+            onDeleteHabit={handleDeleteHabit}
+            onShowAddForm={() => setShowAddForm(true)}
+            onCancelAddForm={() => setShowAddForm(false)}
+          />
         )}
       </div>
-    </main>
+
+      {/* ボトムナビゲーション */}
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+    </div>
   );
 }
