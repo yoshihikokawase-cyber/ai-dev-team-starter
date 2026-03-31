@@ -2,6 +2,7 @@
 
 import { Habit, HabitLog, WeeklyReportData } from '@/lib/types';
 import { getStreak, getPast7Days } from '@/lib/storage';
+import { parseCoaching } from '@/lib/coaching';
 
 interface Props {
   habits: Habit[];
@@ -166,13 +167,34 @@ export default function CoachTab({
           {reportError && (
             <p className="text-red-500 text-xs mt-2 text-center">{reportError}</p>
           )}
-          {report && (
-            <div className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {report.content}
-              </p>
-            </div>
-          )}
+          {report && (() => {
+            const parts = parseCoaching(report.content);
+            if (parts) {
+              return (
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <p className="text-xs font-semibold text-emerald-600 mb-1">🎉 よかったこと</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{parts.positive}</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                    <p className="text-xs font-semibold text-amber-600 mb-1">📊 分析</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{parts.analysis}</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-xs font-semibold text-blue-600 mb-1">▶ アクション</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{parts.action}</p>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="mt-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  {report.content}
+                </p>
+              </div>
+            );
+          })()}
         </div>
       )}
 
