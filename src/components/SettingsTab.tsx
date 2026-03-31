@@ -171,7 +171,7 @@ export default function SettingsTab({
         <h3 className="text-sm font-semibold text-gray-700 mb-3">ℹ️ アプリ情報</h3>
         <div className="flex flex-col gap-2">
           {[
-            { label: 'バージョン',    value: 'Day14 / v2.0' },
+            { label: 'バージョン',    value: 'Day15 / v2.0' },
             { label: 'データ保存',    value: 'ローカル (localStorage)' },
             { label: '登録習慣数',    value: `${habits.length} / 10` },
           ].map(({ label, value }) => (
