@@ -235,6 +235,7 @@ export default function Home() {
             canAddMore={habits.length < MAX_HABITS}
             onAddHabit={handleAddHabit}
             onDeleteHabit={handleDeleteHabit}
+            onGoHome={() => setActiveTab('home')}
             onShowAddForm={() => setShowAddForm(true)}
             onCancelAddForm={() => setShowAddForm(false)}
           />
