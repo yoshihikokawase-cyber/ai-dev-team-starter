@@ -11,6 +11,7 @@ interface Props {
   loadingReport: boolean;
   reportError: string;
   onGenerateReport: () => void;
+  onGoHome: () => void;
 }
 
 /** 過去7日で最も達成が少ない習慣を返す（改善候補） */
@@ -96,6 +97,7 @@ export default function CoachTab({
   loadingReport,
   reportError,
   onGenerateReport,
+  onGoHome,
 }: Props) {
   const mainMessage = buildMainMessage(habits, logs);
   const suggestions = buildSuggestions(habits, logs);
@@ -182,7 +184,13 @@ export default function CoachTab({
                   </div>
                   <div className="p-4 bg-blue-500 rounded-xl shadow-sm">
                     <p className="text-xs font-semibold text-blue-100 mb-1">▶ 今すぐやること</p>
-                    <p className="text-sm font-bold text-white leading-relaxed">{parts.action}</p>
+                    <p className="text-sm font-bold text-white leading-relaxed mb-3">{parts.action}</p>
+                    <button
+                      onClick={onGoHome}
+                      className="w-full bg-white text-blue-600 text-sm font-bold py-2 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      ホームで記録する →
+                    </button>
                   </div>
                 </div>
               );

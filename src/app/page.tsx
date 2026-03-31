@@ -224,6 +224,7 @@ export default function Home() {
             loadingReport={loadingReport}
             reportError={reportError}
             onGenerateReport={handleGenerateReport}
+            onGoHome={() => setActiveTab('home')}
           />
         )}
 
