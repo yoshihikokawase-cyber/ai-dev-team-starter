@@ -18,3 +18,9 @@ export interface WeeklyReportData {
   weekStart: string;
   weekEnd: string;
 }
+
+export type CoachingParts = {
+  positive: string;
+  analysis: string;
+  action: string;
+};
