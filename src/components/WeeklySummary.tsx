@@ -92,7 +92,7 @@ export default function WeeklySummary({ habits, logs }: Props) {
           data-testid="weekly-top-streak"
           className="text-xs text-gray-500 border-t border-gray-100 pt-2"
         >
-          🔥 最長ストリーク: <span className="font-semibold text-orange-500">{topStreak.habit.name}</span> {topStreak.streak}日連続
+          🔥 最長: <span className="font-semibold text-orange-400">{topStreak.habit.name}</span> {topStreak.streak}日つづいてる
         </div>
       )}
     </div>

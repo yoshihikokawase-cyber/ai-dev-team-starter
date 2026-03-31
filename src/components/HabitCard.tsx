@@ -21,14 +21,18 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
   const [showXP, setShowXP] = useState(false);
   // 完了直後のバウンスアニメーション
   const [bouncing, setBouncing] = useState(false);
+  // 完了直後のカード緑フラッシュ
+  const [flashing, setFlashing] = useState(false);
 
   function handleToggle() {
     if (!completed) {
-      // 未完了 → 完了のとき XP + バウンス
+      // 未完了 → 完了のとき XP + バウンス + フラッシュ
       setShowXP(true);
       setBouncing(true);
+      setFlashing(true);
       setTimeout(() => setShowXP(false), 900);
-      setTimeout(() => setBouncing(false), 400);
+      setTimeout(() => setBouncing(false), 250);
+      setTimeout(() => setFlashing(false), 350);
     }
     onToggle(habit.id);
   }
@@ -51,6 +55,11 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
           : 'border-gray-100 bg-white hover:border-indigo-200 shadow-sm'
       }`}
     >
+      {/* 完了瞬間の緑フラッシュオーバーレイ */}
+      {flashing && (
+        <div className="absolute inset-0 rounded-2xl bg-emerald-300 pointer-events-none animate-cardFlash" />
+      )}
+
       {/* +10 XP フロートテキスト */}
       {showXP && (
         <span className="absolute top-2 right-16 text-indigo-500 font-bold text-xs animate-xpFloat pointer-events-none select-none">
@@ -90,7 +99,7 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
                 {habit.name}
               </p>
               <p data-testid="habit-streak" className="text-xs text-gray-400">
-                {streak > 0 ? `🔥 ${streak}日連続` : '今日から始めよう'}
+                {streak === 0 ? '今日から始めよう' : streak === 1 ? '✨ 1日つづいた' : `🔥 ${streak}日つづいてる`}
               </p>
             </div>
           </div>

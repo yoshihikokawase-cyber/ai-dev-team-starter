@@ -77,8 +77,8 @@ export default function StatsTab({
       {/* ── 3つのサマリーカード ── */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-          <div className="text-2xl font-bold text-orange-500">🔥{overallStreak}</div>
-          <div className="text-xs text-gray-500 mt-1">連続日数</div>
+          <div className="text-xl font-semibold text-orange-400">🔥{overallStreak}</div>
+          <div className="text-xs text-gray-500 mt-1">つづいてる日数</div>
         </div>
         <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
           <div className="text-2xl font-bold text-indigo-500">Lv.{level}</div>
@@ -121,7 +121,7 @@ export default function StatsTab({
         </div>
         {habits.length === 0 ? (
           <p className="text-center text-sm text-gray-400 py-4">
-            習慣を追加するとグラフが表示されます
+            習慣を追加するとグラフが見られます
           </p>
         ) : (
           <>

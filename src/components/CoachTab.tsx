@@ -143,7 +143,7 @@ export default function CoachTab({
           </div>
         ) : (
           <p className="text-sm text-gray-400 text-center py-3">
-            習慣を追加すると提案が表示されます
+            習慣を追加するとアドバイスが届きます
           </p>
         )}
       </div>
@@ -164,7 +164,7 @@ export default function CoachTab({
             disabled={loadingReport}
             className="w-full bg-indigo-500 text-white rounded-xl py-3 font-semibold text-sm hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {loadingReport ? '🔄 AIが分析中...' : '📋 今週のふり返りを見る'}
+            {loadingReport ? '🔄 AIが分析中...' : '📊 今週のふり返りを生成する'}
           </button>
           {reportError && (
             <p className="text-red-500 text-xs mt-2 text-center">{reportError}</p>
@@ -209,12 +209,12 @@ export default function CoachTab({
       {/* ── フィードバック履歴 ── */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
-          🗓 フィードバック履歴
+          🗓 前回のふり返り
         </h3>
         {report ? (
           <div className="p-3 bg-gray-50 rounded-xl">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-medium text-gray-500">最新レポート</span>
+              <span className="text-xs font-medium text-gray-500">最新のふり返り</span>
               <span className="text-xs text-gray-400">
                 {new Date(report.generatedAt).toLocaleDateString('ja-JP')}
               </span>
@@ -225,7 +225,7 @@ export default function CoachTab({
           </div>
         ) : (
           <p className="text-sm text-gray-400 text-center py-4">
-            AIレポートを生成すると履歴が表示されます
+            ふり返りはここに残ります
           </p>
         )}
       </div>

@@ -35,16 +35,25 @@ body {
   animation: fadeIn 0.25s ease-out;
 }
 
-/* 完了ボタン: チェックが入る瞬間のバウンス */
+/* 完了ボタン: チェックが入る瞬間のさりげないポップ */
 @keyframes checkBounce {
   0%   { transform: scale(1); }
-  35%  { transform: scale(1.35); }
-  65%  { transform: scale(0.92); }
-  100% { transform: scale(1.05); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 .animate-checkBounce {
-  animation: checkBounce 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+  animation: checkBounce 0.25s ease-out;
+}
+
+/* カード: 完了瞬間の薄い緑フラッシュ */
+@keyframes cardFlash {
+  0%   { opacity: 0.28; }
+  100% { opacity: 0; }
+}
+
+.animate-cardFlash {
+  animation: cardFlash 0.35s ease-out forwards;
 }
 
 /* 未完了ボタン: 「押してほしい」を伝える控えめな外光 pulse */

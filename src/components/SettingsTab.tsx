@@ -68,7 +68,7 @@ export default function SettingsTab({
 
         {habits.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">
-            まだ習慣が登録されていません
+            ホームから習慣を追加しよう
           </p>
         ) : (
           <div className="flex flex-col gap-2">

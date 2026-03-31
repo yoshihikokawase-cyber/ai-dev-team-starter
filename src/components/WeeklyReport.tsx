@@ -14,7 +14,7 @@ export default function WeeklyReport({ report }: Props) {
     >
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xl">🤖</span>
-        <h3 className="font-semibold text-purple-800">AI週次レポート</h3>
+        <h3 className="font-semibold text-purple-800">今週のふり返り</h3>
         <span className="text-xs text-gray-400 ml-auto">
           {new Date(report.generatedAt).toLocaleDateString('ja-JP')}
         </span>

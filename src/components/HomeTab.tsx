@@ -102,7 +102,7 @@ export default function HomeTab({
             <span className="text-xs font-bold text-indigo-600">Lv.{level}</span>
           </div>
           <div className="bg-orange-100 rounded-full px-3 py-1">
-            <span className="text-xs font-bold text-orange-500">🔥{overallStreak}日</span>
+            <span className="text-xs font-semibold text-orange-400">🔥{overallStreak}日</span>
           </div>
         </div>
       </header>
@@ -111,8 +111,8 @@ export default function HomeTab({
       {total === 0 && !showAddForm ? (
         <div data-testid="empty-state" className="text-center py-14 text-gray-400">
           <p className="text-5xl mb-4">🌱</p>
-          <p className="font-semibold text-gray-500">まだ習慣がありません</p>
-          <p className="text-sm mt-1">下のボタンから最初の習慣を追加しましょう</p>
+          <p className="font-semibold text-gray-500">まず1つ、習慣を作ろう</p>
+          <p className="text-sm mt-1">下のボタンからすぐ始められます</p>
         </div>
       ) : (
         <div data-testid="habit-list" className="flex flex-col gap-3 mb-4">
@@ -239,8 +239,8 @@ export default function HomeTab({
             {loadingReport
               ? '🔄 AIが分析中...'
               : reportGeneratedToday
-              ? '✅ 本日のレポート生成済み'
-              : '🤖 AIレポートを生成する'}
+              ? '✅ 今日のふり返り生成済み'
+              : '📊 今週のふり返りを生成する'}
           </button>
           {reportGeneratedToday && (
             <p className="text-xs text-center text-gray-400 mt-1">明日また更新できます</p>
