@@ -43,11 +43,11 @@ function getActionMessage(
   const hours = new Date().getHours();
 
   if (completedToday === 0) {
-    if (overallStreak >= 3) return `${overallStreak}日続いています。今日も1つやってみましょう`;
-    return 'まず1つやってみましょう。それだけでOKです';
+    if (overallStreak >= 3) return `${overallStreak}日継続中！今日も1つ押してみましょう`;
+    return 'まず1つ押してみましょう';
   }
-  if (hours >= 20) return `残り${remaining}つ。今夜のうちに記録しましょう ⏰`;
-  return `あと${remaining}つ。今すぐできる1つを押してみましょう`;
+  if (hours >= 20) return `残り${remaining}つ — 今夜中に記録しましょう ⏰`;
+  return `残り${remaining}つ — 1つ押すだけでOKです`;
 }
 
 /** ホーム画面（メインタブ） */
@@ -75,6 +75,8 @@ export default function HomeTab({
   const completionRate = total > 0 ? Math.round((completedToday / total) * 100) : 0;
   const xpToNext = xpForNext - xpInLevel;
   const isEvening = new Date().getHours() >= 20;
+  const todayDate = new Date().toISOString().slice(0, 10);
+  const reportGeneratedToday = report?.generatedAt?.startsWith(todayDate) ?? false;
 
   const todayStr = new Date().toLocaleDateString('ja-JP', {
     month: 'long',
@@ -141,8 +143,12 @@ export default function HomeTab({
               {completedToday} / {total} 完了
             </span>
             <span
-              className={`text-xs font-semibold ${
-                xpToNext <= 30 ? 'text-indigo-500' : 'text-gray-400'
+              className={`text-xs font-bold ${
+                completedToday === total
+                  ? 'text-emerald-500'
+                  : xpToNext <= 20
+                  ? 'text-indigo-600'
+                  : 'text-gray-400'
               }`}
             >
               {completedToday === total
@@ -227,11 +233,18 @@ export default function HomeTab({
           <button
             data-testid="generate-report-btn"
             onClick={onGenerateReport}
-            disabled={loadingReport}
+            disabled={loadingReport || reportGeneratedToday}
             className="w-full bg-indigo-500 text-white rounded-2xl py-3 font-semibold text-sm hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {loadingReport ? '🔄 AIが分析中...' : '🤖 AIレポートを生成する'}
+            {loadingReport
+              ? '🔄 AIが分析中...'
+              : reportGeneratedToday
+              ? '✅ 本日のレポート生成済み'
+              : '🤖 AIレポートを生成する'}
           </button>
+          {reportGeneratedToday && (
+            <p className="text-xs text-center text-gray-400 mt-1">明日また更新できます</p>
+          )}
           {reportError && (
             <p data-testid="report-error" className="text-red-500 text-xs mt-2 text-center">
               {reportError}

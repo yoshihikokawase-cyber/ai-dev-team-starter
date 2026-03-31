@@ -119,6 +119,11 @@ export default function Home() {
   // ── AIレポート生成 ────────────────────────────────────────────
   async function handleGenerateReport() {
     if (habits.length === 0) return;
+
+    // 1日1回制限: 今日すでに生成済みならキャッシュをそのまま使う
+    const today = getToday();
+    if (report?.generatedAt && report.generatedAt.startsWith(today)) return;
+
     setLoadingReport(true);
     setReportError('');
 
