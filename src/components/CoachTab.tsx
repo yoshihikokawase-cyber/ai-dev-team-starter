@@ -180,9 +180,9 @@ export default function CoachTab({
                     <p className="text-xs font-semibold text-amber-600 mb-1">📊 分析</p>
                     <p className="text-sm text-gray-700 leading-relaxed">{parts.analysis}</p>
                   </div>
-                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-xs font-semibold text-blue-600 mb-1">▶ アクション</p>
-                    <p className="text-sm text-gray-700 leading-relaxed">{parts.action}</p>
+                  <div className="p-4 bg-blue-500 rounded-xl shadow-sm">
+                    <p className="text-xs font-semibold text-blue-100 mb-1">▶ 今すぐやること</p>
+                    <p className="text-sm font-bold text-white leading-relaxed">{parts.action}</p>
                   </div>
                 </div>
               );
