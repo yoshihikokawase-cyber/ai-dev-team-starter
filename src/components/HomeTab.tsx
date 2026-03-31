@@ -135,12 +135,37 @@ export default function HomeTab({
         </div>
       )}
 
-      {/* ── ③ 進捗バー + XPカウントダウン（習慣リスト直下） ── */}
+      {/* ── ③ 今やることカード（完了後も継続促進） ── */}
+      {total > 0 && completedToday > 0 && (
+        <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm border-l-4 border-indigo-500 animate-fadeIn">
+          <p className="text-xs font-bold text-indigo-500 mb-2 tracking-wide">今やること</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-sm text-gray-700">
+              <span className="text-emerald-500 font-bold">✓</span>
+              <span>
+                {completedToday === total
+                  ? '今日はできた。この調子で明日も'
+                  : `まずは1回。あと${total - completedToday}つ`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-indigo-600 font-semibold">
+              <span>⭐</span>
+              <span>
+                {completedToday === total
+                  ? '連続の土台ができた'
+                  : `あと ${xpToNext} XP で Lv.${level + 1}`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── ④ 進捗バー + XPカウントダウン ── */}
       {total > 0 && (
         <div data-testid="progress-section" className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <span data-testid="progress-count" className="text-sm font-bold text-gray-800">
-              {completedToday} / {total} 完了
+              {completedToday} / {total} できた
             </span>
             <span
               className={`text-xs font-bold ${
@@ -152,7 +177,7 @@ export default function HomeTab({
               }`}
             >
               {completedToday === total
-                ? '🎉 全完了！'
+                ? 'ナイス達成 🎉'
                 : `あと${xpToNext} XP → Lv.${level + 1}`}
             </span>
           </div>
@@ -164,31 +189,6 @@ export default function HomeTab({
               }`}
               style={{ width: completionRate > 0 ? `${completionRate}%` : '0%' }}
             />
-          </div>
-        </div>
-      )}
-
-      {/* ── ④ 完了後の次のアクションパネル ── */}
-      {total > 0 && completedToday > 0 && (
-        <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm border-l-4 border-indigo-400 animate-fadeIn">
-          <p className="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wide">次のアクション</p>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <span className="text-emerald-500 font-bold">✓</span>
-              <span>
-                {completedToday === total
-                  ? '全部達成！明日も続けましょう 🎉'
-                  : `${completedToday}つ記録済み。残り${total - completedToday}つ頑張りましょう`}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-indigo-600 font-semibold">
-              <span>⭐</span>
-              <span>
-                {completedToday === total
-                  ? `全完了！現在 Lv.${level}`
-                  : `あと ${xpToNext} XP で Lv.${level + 1}`}
-              </span>
-            </div>
           </div>
         </div>
       )}
@@ -220,7 +220,7 @@ export default function HomeTab({
           onClick={onShowAddForm}
           className="w-full text-gray-400 text-xs py-2 hover:text-indigo-400 transition-colors mb-4"
         >
-          ＋ 習慣を追加する
+          ＋ 新しい習慣を追加
         </button>
       )}
 

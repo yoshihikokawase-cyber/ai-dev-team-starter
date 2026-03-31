@@ -29,7 +29,7 @@ export default function HabitMiniGraph({ weekStatus }: Props) {
                 : ''
             }`}
           />
-          <span className="text-xs text-gray-400 leading-none">
+          <span className="text-xs text-gray-300 leading-none">
             {day.dayLabel}
           </span>
         </div>

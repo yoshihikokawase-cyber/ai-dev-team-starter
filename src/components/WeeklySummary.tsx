@@ -40,13 +40,13 @@ export default function WeeklySummary({ habits, logs }: Props) {
       className="bg-white rounded-xl border border-gray-200 p-4 mb-4"
     >
       <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-        📊 週次サマリー
+        📊 7日間の記録
         <span className="text-xs font-normal text-gray-400">（過去7日間）</span>
       </h3>
 
       {/* 全体達成率 */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-600">全体達成率</span>
+        <span className="text-sm text-gray-600">今週の達成率</span>
         <span
           data-testid="weekly-overall-rate"
           className={`text-lg font-bold ${

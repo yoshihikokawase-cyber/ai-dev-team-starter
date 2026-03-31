@@ -44,29 +44,29 @@ function buildSuggestions(habits: Habit[], logs: HabitLog[]): string[] {
     const weakStreak = getStreak(weak.id, logs);
     if (weakStreak === 0) {
       suggestions.push(
-        `${weak.icon} 「${weak.name}」が最近できていません。まず3日連続を目指しましょう`
+        `${weak.icon} 「${weak.name}」を1回。まずそこだけでOK`
       );
     } else {
       suggestions.push(
-        `${weak.icon} 「${weak.name}」の達成率を上げると、全体が安定します`
+        `${weak.icon} 今日は「${weak.name}」を1回積もう`
       );
     }
   }
 
   if (hours < 10) {
-    suggestions.push('🌅 朝のうちに1つ完了させると、残りも続けやすくなります');
+    suggestions.push('🌅 朝のうちに1つ完了させると、残りも続けやすい');
   } else if (hours >= 20) {
-    suggestions.push('🌙 寝る前の振り返りタイム。未完了の習慣を確認しましょう');
+    suggestions.push('🌙 寝る前に確認。未完了の習慣を1つやろう');
   } else {
-    suggestions.push('⏰ 習慣は毎日同じ時間に行うと、より速く定着します');
+    suggestions.push('⏰ やる時間を固定すると、続きやすくなる');
   }
 
   if (top && getStreak(top.id, logs) >= 3) {
     suggestions.push(
-      `🔥 「${top.name}」のストリークが${getStreak(top.id, logs)}日！この勢いを他の習慣にも活かしましょう`
+      `🔥 「${top.name}」${getStreak(top.id, logs)}日連続！この調子で今日も`
     );
   } else {
-    suggestions.push('💡 記録をつける習慣自体が、最も重要なファーストステップです');
+    suggestions.push('💡 まずは記録。続けるコツはそれだけ');
   }
 
   return suggestions.slice(0, 3);
@@ -81,12 +81,12 @@ function buildMainMessage(habits: Habit[], logs: HabitLog[]): string {
   const top = getTopStreakHabit(habits, logs);
 
   if (weak && getStreak(weak.id, logs) === 0) {
-    return `${weak.icon} 「${weak.name}」が3日以上未達です。小さな目標から再スタートしましょう`;
+    return `${weak.icon} 「${weak.name}」を今日1回。小さく再スタートしよう`;
   }
   if (top && getStreak(top.id, logs) >= 7) {
-    return `${top.icon} 「${top.name}」が${getStreak(top.id, logs)}日連続！習慣が定着してきています`;
+    return `${top.icon} 「${top.name}」が${getStreak(top.id, logs)}日連続！いい流れが来ている`;
   }
-  return '📊 分析中：記録が増えると、より精度の高いアドバイスができます';
+  return '今日も1回記録しよう。それが一番効く';
 }
 
 /** AIコーチ画面 */
@@ -116,7 +116,7 @@ export default function CoachTab({
         <div className="flex items-start gap-3">
           <span className="text-3xl flex-shrink-0">🤖</span>
           <div>
-            <p className="text-xs opacity-70 mb-1">コーチからのメッセージ</p>
+            <p className="text-xs opacity-70 mb-1">コーチからひとこと</p>
             <p className="font-semibold leading-snug">{mainMessage}</p>
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function CoachTab({
       {/* ── 分析 → 提案フロー ── */}
       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
-          💡 今日の改善提案
+          💡 今日の一歩
         </h3>
         {suggestions.length > 0 ? (
           <div className="flex flex-col gap-3">
@@ -152,7 +152,7 @@ export default function CoachTab({
       {habits.length > 0 && (
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">📋 AIレポート（週次）</h3>
+            <h3 className="text-sm font-semibold text-gray-700">📋 今週のふり返り</h3>
             {report && (
               <span className="text-xs text-gray-400">
                 {new Date(report.generatedAt).toLocaleDateString('ja-JP')}
@@ -164,7 +164,7 @@ export default function CoachTab({
             disabled={loadingReport}
             className="w-full bg-indigo-500 text-white rounded-xl py-3 font-semibold text-sm hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {loadingReport ? '🔄 AIが分析中...' : '🤖 AIレポートを生成する'}
+            {loadingReport ? '🔄 AIが分析中...' : '📋 今週のふり返りを見る'}
           </button>
           {reportError && (
             <p className="text-red-500 text-xs mt-2 text-center">{reportError}</p>
