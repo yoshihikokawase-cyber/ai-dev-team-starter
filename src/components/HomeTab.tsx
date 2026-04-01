@@ -5,6 +5,7 @@ import HabitCard from '@/components/HabitCard';
 import AddHabitForm from '@/components/AddHabitForm';
 import WeeklySummary from '@/components/WeeklySummary';
 import WeeklyReport from '@/components/WeeklyReport';
+import { getStreak, getPast7Days } from '@/lib/storage';
 
 interface Props {
   habits: Habit[];
@@ -25,6 +26,52 @@ interface Props {
   onShowAddForm: () => void;
   onCancelAddForm: () => void;
   onGenerateReport: () => void;
+}
+
+/**
+ * 今日まだ未完了の習慣の中から「今日まずやるべき1件」を選ぶ。
+ * 優先順位: ストリーク継続中 > 今週の達成数が多い > リスト順
+ */
+function getRecommendedHabit(
+  habits: Habit[],
+  logs: HabitLog[]
+): { habit: Habit; statusText: string } | null {
+  const today = new Date().toISOString().split('T')[0];
+  const past7 = getPast7Days();
+
+  const incomplete = habits.filter(
+    (h) => !logs.some((l) => l.habitId === h.id && l.date === today)
+  );
+  if (incomplete.length === 0) return null;
+
+  const scored = incomplete.map((habit) => {
+    const streak = getStreak(habit.id, logs);
+    const weekCount = logs.filter(
+      (l) => l.habitId === habit.id && past7.includes(l.date)
+    ).length;
+    return { habit, streak, weekCount };
+  });
+
+  scored.sort((a, b) => {
+    if (a.streak > 0 && b.streak === 0) return -1;
+    if (a.streak === 0 && b.streak > 0) return 1;
+    return b.weekCount - a.weekCount;
+  });
+
+  const top = scored[0];
+
+  let statusText: string;
+  if (top.streak >= 2) {
+    statusText = `🔥 ${top.streak}日つづいてる — キープしよう`;
+  } else if (top.streak === 1) {
+    statusText = '✨ 1日つづいた — 今日も続けよう';
+  } else if (top.weekCount >= 6) {
+    statusText = '今週あと1回で目標達成';
+  } else {
+    statusText = '今日はまだ未完了です';
+  }
+
+  return { habit: top.habit, statusText };
 }
 
 /**
@@ -85,6 +132,7 @@ export default function HomeTab({
   });
 
   const actionMessage = getActionMessage(completedToday, total, overallStreak);
+  const recommended = total > 0 ? getRecommendedHabit(habits, logs) : null;
 
   return (
     <div className="max-w-md mx-auto px-4 pt-5 pb-4 animate-fadeIn">
@@ -107,7 +155,28 @@ export default function HomeTab({
         </div>
       </header>
 
-      {/* ── ① 今日の習慣リスト（最優先・最上部） ── */}
+      {/* ── ① 今日まずこれ CTA（習慣あり・未完了あり） ── */}
+      {recommended && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-4 animate-fadeIn">
+          <p className="text-xs font-bold text-indigo-500 mb-2 tracking-wide">今日まずこれ</p>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl flex-shrink-0">{recommended.habit.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-800 truncate">{recommended.habit.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{recommended.statusText}</p>
+            </div>
+            <button
+              onClick={() => onToggle(recommended.habit.id)}
+              className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-500 text-white text-xl font-bold hover:bg-indigo-600 transition-colors active:scale-95 flex items-center justify-center"
+              aria-label={`${recommended.habit.name}を完了`}
+            >
+              ○
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ② 今日の習慣リスト（最優先・最上部） ── */}
       {total === 0 && !showAddForm ? (
         <div data-testid="empty-state" className="text-center py-14 text-gray-400">
           <p className="text-5xl mb-4">🌱</p>
