@@ -15,6 +15,9 @@ interface Props {
   onGoHome: () => void;
   onShowAddForm: () => void;
   onCancelAddForm: () => void;
+  onSignOut?: () => void;
+  signOutLoading?: boolean;
+  userEmail?: string;
 }
 
 /** 設定・習慣管理画面 */
@@ -28,6 +31,9 @@ export default function SettingsTab({
   onGoHome,
   onShowAddForm,
   onCancelAddForm,
+  onSignOut,
+  signOutLoading,
+  userEmail,
 }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -183,13 +189,30 @@ export default function SettingsTab({
         </div>
       </div>
 
+      {/* ── アカウント ── */}
+      {onSignOut && (
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">👤 アカウント</h3>
+          {userEmail && (
+            <p className="text-xs text-gray-400 mb-3 truncate">{userEmail}</p>
+          )}
+          <button
+            onClick={onSignOut}
+            disabled={signOutLoading}
+            className="w-full text-sm font-medium text-red-400 hover:text-red-500 hover:bg-red-50 rounded-xl py-2 transition-colors disabled:opacity-50"
+          >
+            {signOutLoading ? 'サインアウト中...' : 'サインアウト'}
+          </button>
+        </div>
+      )}
+
       {/* ── アプリ情報 ── */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">ℹ️ アプリ情報</h3>
         <div className="flex flex-col gap-2">
           {[
-            { label: 'バージョン',    value: 'Day18 / v2.3' },
-            { label: 'データ保存',    value: 'ローカル (localStorage)' },
+            { label: 'バージョン',    value: 'Day19 / v2.4' },
+            { label: 'データ保存',    value: 'Supabase (クラウド)' },
             { label: '登録習慣数',    value: `${habits.length} / 10` },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between text-sm">
