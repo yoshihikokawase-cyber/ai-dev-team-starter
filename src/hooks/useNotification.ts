@@ -98,13 +98,27 @@ export function useNotification(
     setPermission(result as NotifPermission);
   }
 
-  /** テスト通知を即時発火 */
+  /** テスト通知を即時発火 — permission は state ではなく Notification.permission を直参照 */
   function sendTestNotification() {
-    if (typeof window === 'undefined' || permission !== 'granted') return;
-    new Notification('QuickHabit テスト通知 🔔', {
-      body: 'テスト通知が正常に動作しています！',
-      icon: '/favicon.ico',
-    });
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return;
+
+    console.log('[QuickHabit] testNotification clicked');
+    console.log('[QuickHabit] Notification.permission:', Notification.permission);
+
+    if (Notification.permission !== 'granted') {
+      alert('通知が許可されていません。ブラウザのサイト設定から通知を許可してください。');
+      return;
+    }
+
+    try {
+      new Notification('QuickHabit テスト通知 🔔', {
+        body: '今日の習慣を1つ記録しよう',
+      });
+      console.log('[QuickHabit] notification created');
+    } catch (error) {
+      console.error('[QuickHabit] test notification failed', error);
+    }
   }
 
   /** 設定を Supabase に upsert 保存 */

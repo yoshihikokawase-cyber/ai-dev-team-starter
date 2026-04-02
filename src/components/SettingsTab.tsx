@@ -275,11 +275,10 @@ export default function SettingsTab({
               {notifSaving ? '保存中...' : '保存する'}
             </button>
 
-            {/* テスト通知ボタン */}
+            {/* テスト通知ボタン — state 依存の disabled を外し、handler 側で guard */}
             <button
               onClick={onTestNotification}
-              disabled={notifPermission !== 'granted'}
-              className="w-full border border-gray-200 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full border border-gray-200 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
             >
               📣 テスト通知を送る
             </button>
