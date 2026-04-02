@@ -100,10 +100,18 @@ export function useNotification(
 
   /** テスト通知を即時発火 — permission は state ではなく Notification.permission を直参照 */
   function sendTestNotification() {
-    if (typeof window === 'undefined') return;
-    if (!('Notification' in window)) return;
+    // ① 最初のログ（ガード節より前）
+    console.log('[QuickHabit] sendTestNotification called');
 
-    console.log('[QuickHabit] testNotification clicked');
+    if (typeof window === 'undefined') {
+      console.log('[QuickHabit] abort: window undefined (SSR?)');
+      return;
+    }
+    if (!('Notification' in window)) {
+      console.log('[QuickHabit] abort: Notification not supported');
+      return;
+    }
+
     console.log('[QuickHabit] Notification.permission:', Notification.permission);
 
     if (Notification.permission !== 'granted') {

@@ -275,9 +275,12 @@ export default function SettingsTab({
               {notifSaving ? '保存中...' : '保存する'}
             </button>
 
-            {/* テスト通知ボタン — state 依存の disabled を外し、handler 側で guard */}
+            {/* テスト通知ボタン — disabled なし・ボタン自身にもログ */}
             <button
-              onClick={onTestNotification}
+              onClick={() => {
+                console.log('[QuickHabit] button clicked');
+                onTestNotification();
+              }}
               className="w-full border border-gray-200 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors"
             >
               📣 テスト通知を送る
