@@ -21,6 +21,7 @@ import StatsTab from '@/components/StatsTab';
 import CoachTab from '@/components/CoachTab';
 import SettingsTab from '@/components/SettingsTab';
 import AuthForm from '@/components/AuthForm';
+import { useNotification } from '@/hooks/useNotification';
 
 const MAX_HABITS = 10;
 
@@ -73,6 +74,17 @@ export default function Home() {
   const [reportError, setReportError] = useState('');
   const [toast, setToast] = useState<{ message: string; isSpecial: boolean } | null>(null);
   const [signOutLoading, setSignOutLoading] = useState(false);
+
+  // ── 通知設定 ──────────────────────────────────────────────────────
+  const {
+    permission: notifPermission,
+    settings: notifSettings,
+    saving: notifSaving,
+    saveMsg: notifSaveMsg,
+    requestPermission,
+    sendTestNotification,
+    saveSettings: saveNotifSettings,
+  } = useNotification(supabase, user?.id);
 
   // ── 認証状態の監視 ───────────────────────────────────────────────
   // onAuthStateChange は初回マウント時に必ず INITIAL_SESSION を発火するため
@@ -344,6 +356,13 @@ export default function Home() {
             onSignOut={handleSignOut}
             signOutLoading={signOutLoading}
             userEmail={user.email}
+            notifPermission={notifPermission}
+            notifSettings={notifSettings}
+            notifSaving={notifSaving}
+            notifSaveMsg={notifSaveMsg}
+            onRequestPermission={requestPermission}
+            onTestNotification={sendTestNotification}
+            onSaveNotifSettings={saveNotifSettings}
           />
         )}
       </div>

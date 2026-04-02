@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Habit, HabitLog } from '@/lib/types';
 import { getStreak } from '@/lib/storage';
 import AddHabitForm from '@/components/AddHabitForm';
+import type { NotifPermission, NotificationSettings } from '@/hooks/useNotification';
 
 interface Props {
   habits: Habit[];
@@ -18,6 +19,14 @@ interface Props {
   onSignOut?: () => void;
   signOutLoading?: boolean;
   userEmail?: string;
+  // 通知設定
+  notifPermission: NotifPermission;
+  notifSettings: NotificationSettings;
+  notifSaving: boolean;
+  notifSaveMsg: string;
+  onRequestPermission: () => void;
+  onTestNotification: () => void;
+  onSaveNotifSettings: (s: NotificationSettings) => void;
 }
 
 /** 設定・習慣管理画面 */
@@ -34,8 +43,25 @@ export default function SettingsTab({
   onSignOut,
   signOutLoading,
   userEmail,
+  notifPermission,
+  notifSettings,
+  notifSaving,
+  notifSaveMsg,
+  onRequestPermission,
+  onTestNotification,
+  onSaveNotifSettings,
 }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  // 通知設定のローカルドラフト（保存前の編集用）
+  const [draftEnabled, setDraftEnabled] = useState(notifSettings.enabled);
+  const [draftTime, setDraftTime] = useState(notifSettings.time);
+
+  // DB からの設定ロード後にドラフトを同期
+  useEffect(() => {
+    setDraftEnabled(notifSettings.enabled);
+    setDraftTime(notifSettings.time);
+  }, [notifSettings]);
 
   const yesterdayStr = (() => {
     const d = new Date();
@@ -163,30 +189,111 @@ export default function SettingsTab({
         )}
       </div>
 
-      {/* ── ⑤ 通知設定（未実装・操作不可で明示） ── */}
+      {/* ── ⑤ 通知設定 ── */}
       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-700">🔔 通知設定</h3>
-          <span className="text-xs bg-amber-50 text-amber-500 rounded-full px-2 py-0.5">
-            近日実装
-          </span>
+          {/* 許可状態バッジ */}
+          {notifPermission === 'unsupported' ? (
+            <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-2 py-0.5">非対応</span>
+          ) : notifPermission === 'granted' ? (
+            <span className="text-xs bg-emerald-50 text-emerald-600 rounded-full px-2 py-0.5">許可済み ✓</span>
+          ) : notifPermission === 'denied' ? (
+            <span className="text-xs bg-red-50 text-red-500 rounded-full px-2 py-0.5">拒否済み</span>
+          ) : (
+            <span className="text-xs bg-amber-50 text-amber-500 rounded-full px-2 py-0.5">未設定</span>
+          )}
         </div>
-        <div className="flex flex-col gap-4 opacity-40 pointer-events-none">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">🌅 朝の通知</p>
-              <p className="text-xs text-gray-400">毎朝 7:00 にリマインド</p>
+
+        {notifPermission === 'unsupported' && (
+          <p className="text-xs text-gray-400 text-center py-2">
+            このブラウザは通知に対応していません
+          </p>
+        )}
+
+        {notifPermission === 'denied' && (
+          <p className="text-xs text-red-400 bg-red-50 rounded-xl px-3 py-2 mb-3">
+            ブラウザで通知が拒否されています。ブラウザの設定から許可してください。
+          </p>
+        )}
+
+        {notifPermission !== 'unsupported' && (
+          <div className="flex flex-col gap-4">
+            {/* 許可ボタン（未設定時のみ） */}
+            {notifPermission === 'default' && (
+              <button
+                onClick={onRequestPermission}
+                className="w-full bg-indigo-500 text-white text-sm font-semibold rounded-xl py-2.5 hover:bg-indigo-600 transition-colors"
+              >
+                🔔 通知を有効にする
+              </button>
+            )}
+
+            {/* ON/OFF トグル */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">通知を受け取る</p>
+                <p className="text-xs text-gray-400">ページを開いている間のみ動作</p>
+              </div>
+              <button
+                onClick={() => setDraftEnabled((v) => !v)}
+                disabled={notifPermission !== 'granted'}
+                className={`relative w-12 h-6 rounded-full transition-colors focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed ${
+                  draftEnabled ? 'bg-indigo-500' : 'bg-gray-200'
+                }`}
+                aria-label="通知ON/OFF"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    draftEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
-            <div className="w-12 h-6 bg-gray-200 rounded-full" />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-700">🌙 夜の通知</p>
-              <p className="text-xs text-gray-400">毎晩 21:00 にリマインド</p>
+
+            {/* 時刻入力 */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">通知時刻</p>
+                <p className="text-xs text-gray-400">1日1回</p>
+              </div>
+              <input
+                type="time"
+                value={draftTime}
+                onChange={(e) => setDraftTime(e.target.value)}
+                disabled={notifPermission !== 'granted'}
+                className="text-sm text-gray-700 font-medium border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              />
             </div>
-            <div className="w-12 h-6 bg-gray-200 rounded-full" />
+
+            {/* 保存ボタン */}
+            <button
+              onClick={() => onSaveNotifSettings({ enabled: draftEnabled, time: draftTime })}
+              disabled={notifSaving || notifPermission !== 'granted'}
+              className="w-full bg-gray-800 text-white text-sm font-semibold rounded-xl py-2.5 hover:bg-gray-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {notifSaving ? '保存中...' : '保存する'}
+            </button>
+
+            {/* テスト通知ボタン */}
+            <button
+              onClick={onTestNotification}
+              disabled={notifPermission !== 'granted'}
+              className="w-full border border-gray-200 text-gray-600 text-sm font-medium rounded-xl py-2.5 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              📣 テスト通知を送る
+            </button>
+
+            {/* 保存メッセージ */}
+            {notifSaveMsg && (
+              <p className={`text-xs text-center font-medium ${
+                notifSaveMsg.includes('✗') ? 'text-red-500' : 'text-emerald-600'
+              }`}>
+                {notifSaveMsg}
+              </p>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── アカウント ── */}
@@ -211,7 +318,7 @@ export default function SettingsTab({
         <h3 className="text-sm font-semibold text-gray-700 mb-3">ℹ️ アプリ情報</h3>
         <div className="flex flex-col gap-2">
           {[
-            { label: 'バージョン',    value: 'Day19 / v2.4' },
+            { label: 'バージョン',    value: 'Day20 / v2.5' },
             { label: 'データ保存',    value: 'Supabase (クラウド)' },
             { label: '登録習慣数',    value: `${habits.length} / 10` },
           ].map(({ label, value }) => (
