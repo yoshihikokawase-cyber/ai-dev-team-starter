@@ -2,18 +2,27 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  registerServiceWorker,
+  subscribePush,
+  extractSubscriptionData,
+} from '@/lib/pushUtils';
 
 export type NotifPermission = 'default' | 'granted' | 'denied' | 'unsupported';
 
 export interface NotificationSettings {
   enabled: boolean;
-  time: string; // "HH:MM" 例: "21:00"
+  time: string;
 }
 
-/**
- * ブラウザ通知の Permission 管理・スケジューリング・Supabase 保存を担当するカスタムフック。
- * ページを開いている間だけ動作するシンプルなクライアントサイドスケジューラー。
- */
+export type PushStatus =
+  | 'idle'
+  | 'subscribing'
+  | 'subscribed'
+  | 'permission_denied'
+  | 'unsupported'
+  | 'error';
+
 export function useNotification(
   supabase: SupabaseClient,
   userId: string | undefined
@@ -25,21 +34,23 @@ export function useNotification(
   });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  const [pushStatus, setPushStatus] = useState<PushStatus>('idle');
 
-  // インターバルと二重発火防止用の ref
+  const swRegRef = useRef<ServiceWorkerRegistration | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFiredRef = useRef<string>('');
 
-  // ── ① 初回: ブラウザ側でのみ Permission を読み取る（SSR 安全）
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       setPermission('unsupported');
       return;
     }
     setPermission(Notification.permission as NotifPermission);
+    registerServiceWorker().then((reg) => {
+      swRegRef.current = reg;
+    });
   }, []);
 
-  // ── ② Supabase から通知設定をロード
   useEffect(() => {
     if (!userId) return;
     supabase
@@ -57,83 +68,150 @@ export function useNotification(
       });
   }, [userId, supabase]);
 
-  // ── ③ 通知スケジューラー（30秒ごとに現在時刻と照合）
   useEffect(() => {
-    // 前回のインターバルをクリア
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     if (!settings.enabled || permission !== 'granted') return;
-
     const id = setInterval(() => {
       const now = new Date();
       const parts = settings.time.split(':');
       const hh = parseInt(parts[0], 10);
       const mm = parseInt(parts[1], 10);
-      // 当日・当該時刻の一意キー（二重発火防止）
       const todayKey = `${now.toISOString().slice(0, 10)}-${settings.time}`;
-
-      if (
-        now.getHours() === hh &&
-        now.getMinutes() === mm &&
-        lastFiredRef.current !== todayKey
-      ) {
+      if (now.getHours() === hh && now.getMinutes() === mm && lastFiredRef.current !== todayKey) {
         lastFiredRef.current = todayKey;
-        new Notification('QuickHabit 🔔', {
-          body: '今日の習慣を記録しましょう！',
+        new Notification('QuickHabit', {
+          body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u3092\u8A18\u9332\u3057\u307E\u3057\u3087\u3046\uFF01',
           icon: '/favicon.ico',
         });
       }
-    }, 30_000); // 30秒ごと
-
+    }, 30_000);
     intervalRef.current = id;
     return () => clearInterval(id);
   }, [settings, permission]);
 
-  /** 通知許可をリクエスト（必ずボタン押下経由で呼ぶこと） */
   async function requestPermission() {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
     const result = await Notification.requestPermission();
     setPermission(result as NotifPermission);
+    return result;
   }
 
-  /** テスト通知を即時発火 — permission は state ではなく Notification.permission を直参照 */
   function sendTestNotification() {
-    // ① 最初のログ（ガード節より前）
     console.log('[QuickHabit] sendTestNotification called');
-
-    if (typeof window === 'undefined') {
-      console.log('[QuickHabit] abort: window undefined (SSR?)');
-      return;
-    }
-    if (!('Notification' in window)) {
-      console.log('[QuickHabit] abort: Notification not supported');
-      return;
-    }
-
-    console.log('[QuickHabit] Notification.permission:', Notification.permission);
-
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') {
-      alert('通知が許可されていません。ブラウザのサイト設定から通知を許可してください。');
+      alert('\u901A\u77E5\u304C\u8A31\u53EF\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u30D6\u30E9\u30A6\u30B6\u306E\u30B5\u30A4\u30C8\u8A2D\u5B9A\u304B\u3089\u901A\u77E5\u3092\u8A31\u53EF\u3057\u3066\u304F\u3060\u3055\u3044\u3002');
       return;
     }
-
     try {
-      new Notification('QuickHabit テスト通知 🔔', {
-        body: '今日の習慣を1つ記録しよう',
+      new Notification('QuickHabit \u30ED\u30FC\u30AB\u30EB\u30C6\u30B9\u30C8', {
+        body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u30921\u3064\u8A18\u9332\u3057\u3088\u3046',
       });
-      console.log('[QuickHabit] notification created');
+      console.log('[QuickHabit] local notification created');
     } catch (error) {
-      console.error('[QuickHabit] test notification failed', error);
+      console.error('[QuickHabit] local test notification failed', error);
     }
   }
 
-  /** 設定を Supabase に upsert 保存 */
+  async function enablePushSubscription(): Promise<boolean> {
+    console.log('[Push] enablePushSubscription called. userId:', userId);
+    if (!userId) { console.warn('[Push] No userId, aborting'); return false; }
+    if (typeof window === 'undefined' || !('PushManager' in window)) {
+      console.warn('[Push] PushManager not supported');
+      setPushStatus('unsupported');
+      return false;
+    }
+    setPushStatus('subscribing');
+
+    let perm = Notification.permission;
+    console.log('[Push] Current permission:', perm);
+    if (perm === 'default') {
+      perm = await Notification.requestPermission();
+      setPermission(perm as NotifPermission);
+    }
+    if (perm !== 'granted') {
+      console.warn('[Push] Permission not granted:', perm);
+      setPushStatus('permission_denied');
+      return false;
+    }
+
+    let reg = swRegRef.current;
+    if (!reg) {
+      console.log('[Push] No cached SW reg, registering...');
+      reg = await registerServiceWorker();
+      swRegRef.current = reg;
+    }
+    if (!reg) {
+      console.error('[Push] SW registration failed');
+      setPushStatus('error');
+      return false;
+    }
+    console.log('[Push] SW registration OK:', reg.scope);
+
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
+    console.log('[Push] VAPID key present:', vapidKey.length > 0, '(length:', vapidKey.length, ')');
+    const sub = await subscribePush(reg, vapidKey);
+    if (!sub) {
+      console.error('[Push] subscribePush returned null');
+      setPushStatus('error');
+      return false;
+    }
+
+    const subData = extractSubscriptionData(sub);
+    console.log('[Push] subscription.toJSON():', sub.toJSON());
+    console.log('[Push] extracted data — endpoint:', subData.endpoint.slice(0, 60) + '...', 'p256dh:', subData.p256dh.slice(0, 10) + '...', 'auth:', subData.auth.slice(0, 10) + '...');
+
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      { user_id: userId, endpoint: subData.endpoint, p256dh: subData.p256dh, auth: subData.auth, subscription_json: subData.subscription_json, is_active: true },
+      { onConflict: 'user_id,endpoint' }
+    );
+    if (error) {
+      console.error('[Push] Supabase upsert failed. code:', error.code, 'message:', error.message, 'details:', error.details, 'hint:', error.hint);
+      setPushStatus('error');
+      return false;
+    }
+
+    setPushStatus('subscribed');
+    console.log('[Push] Subscription saved to Supabase successfully');
+    return true;
+  }
+
+  async function disablePushSubscription() {
+    if (!userId) return;
+    await supabase
+      .from('push_subscriptions')
+      .update({ is_active: false })
+      .eq('user_id', userId);
+    const reg = swRegRef.current;
+    if (reg) {
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+    }
+    setPushStatus('idle');
+    console.log('[Push] Unsubscribed');
+  }
+
   async function saveSettings(next: NotificationSettings) {
     if (!userId) return;
     setSaving(true);
     setSaveMsg('');
+
+    console.log('[Push] saveSettings called. next.enabled:', next.enabled, 'settings.enabled:', settings.enabled, 'pushStatus:', pushStatus);
+
+    // enablePushSubscription は「有効化したい、かつまだ購読済みでない」場合に実行
+    // settings.enabled が既に true でも pushStatus が 'subscribed' でなければ再購読する
+    // （前回セッションで保存したが Push 購読が取れていないケースに対応）
+    if (next.enabled && pushStatus !== 'subscribed') {
+      console.log('[Push] Calling enablePushSubscription (pushStatus was:', pushStatus, ')');
+      await enablePushSubscription();
+    }
+    if (!next.enabled && settings.enabled) {
+      await disablePushSubscription();
+    }
+
     const { error } = await supabase.from('user_settings').upsert(
       {
         user_id: userId,
@@ -145,10 +223,10 @@ export function useNotification(
     );
     setSaving(false);
     if (error) {
-      setSaveMsg('保存に失敗しました ✗');
+      setSaveMsg('\u4FDD\u5B58\u306B\u5931\u6557\u3057\u307E\u3057\u305F \u2717');
     } else {
       setSettings(next);
-      setSaveMsg('保存しました ✓');
+      setSaveMsg('\u4FDD\u5B58\u3057\u307E\u3057\u305F \u2713');
       setTimeout(() => setSaveMsg(''), 2500);
     }
   }
@@ -158,8 +236,11 @@ export function useNotification(
     settings,
     saving,
     saveMsg,
+    pushStatus,
     requestPermission,
     sendTestNotification,
     saveSettings,
+    enablePushSubscription,
+    disablePushSubscription,
   };
 }

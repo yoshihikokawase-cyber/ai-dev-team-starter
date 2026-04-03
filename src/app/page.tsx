@@ -81,6 +81,7 @@ export default function Home() {
     settings: notifSettings,
     saving: notifSaving,
     saveMsg: notifSaveMsg,
+    pushStatus,
     requestPermission,
     sendTestNotification,
     saveSettings: saveNotifSettings,
@@ -360,8 +361,10 @@ export default function Home() {
             notifSettings={notifSettings}
             notifSaving={notifSaving}
             notifSaveMsg={notifSaveMsg}
+            pushStatus={pushStatus}
             onRequestPermission={requestPermission}
             onTestNotification={sendTestNotification}
+            onSendPushTest={() => {}}
             onSaveNotifSettings={saveNotifSettings}
           />
         )}
