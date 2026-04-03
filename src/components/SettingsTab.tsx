@@ -56,16 +56,23 @@ export default function SettingsTab({
   const remaining = 10 - habits.length;
 
   async function handleSendPushTest() {
+    console.log('[Push] Push test button clicked');
     setPushTestMsg('送信中...');
     try {
+      console.log('[Push] Fetching /api/push-send ...');
       const res = await fetch('/api/push-send', { method: 'POST' });
+      console.log('[Push] /api/push-send responded:', res.status, res.ok);
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.log('[Push] Push send success:', data);
         setPushTestMsg('Push通知を送信しました ✓');
       } else {
         const data = await res.json().catch(() => ({}));
+        console.error('[Push] Push send failed. status:', res.status, 'body:', data);
         setPushTestMsg(`送信失敗: ${data.error ?? res.status}`);
       }
-    } catch {
+    } catch (err) {
+      console.error('[Push] fetch threw an error:', err);
       setPushTestMsg('送信失敗（ネットワークエラー）');
     }
     setTimeout(() => setPushTestMsg(''), 4000);

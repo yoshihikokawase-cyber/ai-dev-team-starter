@@ -364,7 +364,7 @@ export default function Home() {
             pushStatus={pushStatus}
             onRequestPermission={requestPermission}
             onTestNotification={sendTestNotification}
-            onSendPushTest={() => {}}
+            onSendPushTest={() => { console.log('[page] onSendPushTest callback fired'); }}
             onSaveNotifSettings={saveNotifSettings}
           />
         )}
