@@ -35,7 +35,7 @@ export async function POST() {
   }
 
   const payload = JSON.stringify({
-    title: 'QuickHabit',
+    title: 'TapHabit',
     body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u3092\u8A18\u9332\u3057\u307E\u3057\u3087\u3046\uFF01',
     url: '/',
   });

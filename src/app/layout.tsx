@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'QuickHabit — 1タップ習慣記録',
+  title: 'TapHabit — 1タップ習慣記録',
   description: '毎日の習慣を1タップで記録し、AIが週次フィードバックを提供します',
 };
 

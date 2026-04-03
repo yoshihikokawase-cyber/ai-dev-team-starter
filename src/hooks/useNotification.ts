@@ -82,7 +82,7 @@ export function useNotification(
       const todayKey = `${now.toISOString().slice(0, 10)}-${settings.time}`;
       if (now.getHours() === hh && now.getMinutes() === mm && lastFiredRef.current !== todayKey) {
         lastFiredRef.current = todayKey;
-        new Notification('QuickHabit', {
+        new Notification('TapHabit', {
           body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u3092\u8A18\u9332\u3057\u307E\u3057\u3087\u3046\uFF01',
           icon: '/favicon.ico',
         });
@@ -107,7 +107,7 @@ export function useNotification(
       return;
     }
     try {
-      new Notification('QuickHabit \u30ED\u30FC\u30AB\u30EB\u30C6\u30B9\u30C8', {
+      new Notification('TapHabit \u30ED\u30FC\u30AB\u30EB\u30C6\u30B9\u30C8', {
         body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u30921\u3064\u8A18\u9332\u3057\u3088\u3046',
       });
       console.log('[QuickHabit] local notification created');

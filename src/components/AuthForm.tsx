@@ -69,7 +69,7 @@ export default function AuthForm({ supabase }: Props) {
 
         {/* ロゴ */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">⚡ QuickHabit</h1>
+          <h1 className="text-2xl font-bold text-gray-900">⚡ TapHabit</h1>
           <p className="text-sm text-gray-400 mt-1">毎日の習慣を1タップで記録</p>
         </div>
 

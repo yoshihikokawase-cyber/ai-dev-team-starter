@@ -140,7 +140,7 @@ export default function HomeTab({
       {/* ── ヘッダー（コンパクト） ── */}
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">⚡ QuickHabit</h1>
+          <h1 className="text-xl font-bold text-gray-900">⚡ TapHabit</h1>
           <p data-testid="today-date" className="text-xs text-gray-400 mt-0.5">
             {todayStr}
           </p>

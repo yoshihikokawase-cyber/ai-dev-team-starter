@@ -23,7 +23,7 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'QuickHabit';
+  const title = data.title || 'TapHabit';
   const options = {
     body: data.body || '今日の習慣を記録しましょう',
     icon: '/favicon.ico',
