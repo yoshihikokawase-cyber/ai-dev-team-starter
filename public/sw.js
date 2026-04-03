@@ -1,21 +1,47 @@
 // QuickHabit Service Worker — Push notification handler
+// Updated: force browser to pick up latest SW
+
+self.addEventListener('install', () => {
+  console.log('[SW] install: new SW installing');
+  self.skipWaiting(); // 古いSWを即座に置き換える
+});
+
+self.addEventListener('activate', (event) => {
+  console.log('[SW] activate: new SW activated');
+  event.waitUntil(self.clients.claim()); // 既存タブをすぐにこのSWが制御
+});
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'QuickHabit', body: '\u4ECA\u65E5\u306E\u7FD2\u6163\u3092\u8A18\u9332\u3057\u307E\u3057\u3087\u3046', url: '/' };
-  if (event.data) {
-    try { data = { ...data, ...event.data.json() }; }
-    catch { data.body = event.data.text(); }
+  console.log('[SW] push event received');
+
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+    console.log('[SW] push payload:', JSON.stringify(data));
+  } catch (e) {
+    console.error('[SW] payload parse error:', e);
+    data = { body: event.data ? event.data.text() : '' };
   }
+
+  const title = data.title || 'QuickHabit';
   const options = {
-    body: data.body,
+    body: data.body || '今日の習慣を記録しましょう',
     icon: '/favicon.ico',
     badge: '/favicon.ico',
-    data: { url: data.url },
+    data: { url: data.url || '/' },
   };
-  event.waitUntil(self.registration.showNotification(data.title, options));
+
+  console.log('[SW] calling showNotification. title:', title, 'body:', options.body);
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => { console.log('[SW] showNotification resolved'); })
+      .catch((err) => { console.error('[SW] showNotification failed:', err); })
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] notificationclick received');
   event.notification.close();
   const targetUrl = event.notification.data?.url ?? '/';
   event.waitUntil(
