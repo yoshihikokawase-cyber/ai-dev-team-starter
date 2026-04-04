@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Habit, HabitLog, WeeklyReportData } from '@/lib/types';
 import HabitCard from '@/components/HabitCard';
 import AddHabitForm from '@/components/AddHabitForm';
@@ -97,6 +98,24 @@ function getActionMessage(
   return `残り${remaining}つ — 1つ押すだけでOKです`;
 }
 
+// ─── 今日の状態 ────────────────────────────────────────────────────
+
+type Mood = 'good' | 'normal' | 'tired';
+
+const MOODS: { key: Mood; emoji: string; label: string }[] = [
+  { key: 'good',   emoji: '😊', label: '調子いい'       },
+  { key: 'normal', emoji: '😐', label: 'ふつう'          },
+  { key: 'tired',  emoji: '😞', label: 'ちょっとしんどい' },
+];
+
+const MOOD_COMMENTS: Record<Mood, string> = {
+  good:   '今日は一段上を狙いましょう',
+  normal: '無理せず積み上げていきましょう',
+  tired:  '1分でもOK。ゼロにしないことが勝ちです',
+};
+
+// ────────────────────────────────────────────────────────────────────
+
 /** ホーム画面（メインタブ） */
 export default function HomeTab({
   habits,
@@ -118,6 +137,8 @@ export default function HomeTab({
   onCancelAddForm,
   onGenerateReport,
 }: Props) {
+  const [mood, setMood] = useState<Mood | null>(null);
+
   const total = habits.length;
   const completionRate = total > 0 ? Math.round((completedToday / total) * 100) : 0;
   const xpToNext = xpForNext - xpInLevel;
@@ -155,7 +176,40 @@ export default function HomeTab({
         </div>
       </header>
 
-      {/* ── ① 今日まずこれ CTA（習慣あり・未完了あり） ── */}
+      {/* ── ① 今日の状態 3択 ── */}
+      <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+        <p className="text-xs font-bold text-gray-400 mb-3 tracking-wide uppercase">今日の状態</p>
+        <div className="flex gap-2">
+          {MOODS.map(({ key, emoji, label }) => (
+            <button
+              key={key}
+              onClick={() => setMood(key)}
+              className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all duration-150 active:scale-95 ${
+                mood === key
+                  ? 'bg-green-50 ring-2 ring-green-400 ring-offset-1'
+                  : 'bg-gray-50 hover:bg-gray-100'
+              }`}
+              aria-pressed={mood === key}
+            >
+              <span className="text-2xl leading-none">{emoji}</span>
+              <span
+                className={`text-[11px] font-semibold leading-tight text-center ${
+                  mood === key ? 'text-green-700' : 'text-gray-500'
+                }`}
+              >
+                {label}
+              </span>
+            </button>
+          ))}
+        </div>
+        {mood && (
+          <div className="mt-3 px-3 py-2 bg-green-50 rounded-xl animate-fadeIn">
+            <p className="text-xs text-green-700 font-medium">{MOOD_COMMENTS[mood]}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── ② 今日まずこれ CTA（習慣あり・未完了あり） ── */}
       {recommended && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4 animate-fadeIn">
           <p className="text-xs font-bold text-green-600 mb-2 tracking-wide">今日まずこれ</p>
