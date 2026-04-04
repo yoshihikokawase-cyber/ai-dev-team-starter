@@ -98,6 +98,38 @@ function getActionMessage(
   return `残り${remaining}つ — 1つ押すだけでOKです`;
 }
 
+// ─── 週次ふり返りコメント ─────────────────────────────────────────
+
+/**
+ * 過去7日間の完了率（0〜1）と今日の状態から、1〜2行のコメントを返す。
+ *
+ * weekRate の区分:
+ *   良い週  … 0.6 以上（60%+）
+ *   普通    … 0.3 以上 0.6 未満
+ *   悪い週  … 0.3 未満
+ */
+function getWeeklyReflection(weekRate: number, mood: Mood | null): string {
+  const isGoodWeek = weekRate >= 0.6;
+  const isBadWeek  = weekRate < 0.3;
+
+  if (isGoodWeek) {
+    if (mood === 'good')   return 'この調子！積み上げが確実に力になっています。';
+    if (mood === 'tired')  return 'いい1週間でした。今日は充電の日でOK。';
+    return 'いいペースです。このまま続けましょう。';
+  }
+
+  if (isBadWeek) {
+    if (mood === 'good')   return '今日から流れが変わります。まず1つ押してみましょう。';
+    if (mood === 'tired')  return '無理しなくていい。1つだけでもゼロより全然いい。';
+    return '少しペースが落ちても大丈夫。今日の1つが次につながります。';
+  }
+
+  // 普通の週（30〜59%）
+  if (mood === 'good')   return '着実に続いています。今日は少し伸ばしてみましょう。';
+  if (mood === 'tired')  return '続けているだけで十分。今日は守ることが正解です。';
+  return '安定したペースです。焦らず積み上げましょう。';
+}
+
 // ─── 今日の状態 ────────────────────────────────────────────────────
 
 type Mood = 'good' | 'normal' | 'tired';
@@ -154,6 +186,12 @@ export default function HomeTab({
 
   const actionMessage = getActionMessage(completedToday, total, overallStreak);
   const recommended = total > 0 ? getRecommendedHabit(habits, logs) : null;
+
+  // 過去7日間の完了率（0〜1）
+  const past7 = getPast7Days();
+  const weekLogCount = logs.filter((l) => past7.includes(l.date)).length;
+  const weekRate = total > 0 ? weekLogCount / (total * 7) : 0;
+  const weeklyReflection = getWeeklyReflection(weekRate, mood);
 
   return (
     <div className="max-w-md mx-auto px-4 pt-5 pb-4 animate-fadeIn">
@@ -312,6 +350,21 @@ export default function HomeTab({
               }`}
               style={{ width: completionRate > 0 ? `${completionRate}%` : '0%' }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── ④-b 週次ふり返り ── */}
+      {total > 0 && (
+        <div className="bg-white rounded-2xl px-4 py-3.5 mb-3 shadow-sm flex items-start gap-3">
+          <span className="text-lg mt-0.5 flex-shrink-0">
+            {weekRate >= 0.6 ? '🌟' : weekRate >= 0.3 ? '📈' : '💪'}
+          </span>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+              週のふり返り
+            </p>
+            <p className="text-sm text-gray-700 leading-relaxed">{weeklyReflection}</p>
           </div>
         </div>
       )}
