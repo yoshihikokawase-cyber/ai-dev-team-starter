@@ -1,377 +1,298 @@
-'use client';
+// TapHabit Landing Page
+// Route: /
+// Design: iOS-minimal, green gradient, generous whitespace
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { Habit, HabitLog, WeeklyReportData } from '@/lib/types';
-import { createClient } from '@/lib/supabase/client';
-import {
-  getToday,
-  isCompletedToday,
-  getWeeklyReport,
-  saveWeeklyReport,
-  getPast7Days,
-  getOverallStreak,
-  getLevelProgress,
-  getMonthlyRate,
-} from '@/lib/storage';
-import Toast from '@/components/Toast';
-import BottomNav, { TabId } from '@/components/BottomNav';
-import HomeTab from '@/components/HomeTab';
-import StatsTab from '@/components/StatsTab';
-import CoachTab from '@/components/CoachTab';
-import SettingsTab from '@/components/SettingsTab';
-import AuthForm from '@/components/AuthForm';
-import { useNotification } from '@/hooks/useNotification';
+import Link from 'next/link';
 
-const MAX_HABITS = 10;
-
-// ─── Supabase 行型 → アプリ型 変換 ──────────────────────────────────
-
-type HabitRow = {
-  id: string;
-  user_id: string;
-  name: string;
-  icon: string;
-  created_at: string;
-};
-type LogRow = {
-  id: string;
-  user_id: string;
-  habit_id: string;
-  date: string;
-  completed_at: string;
-};
-
-function toHabit(row: HabitRow): Habit {
-  return { id: row.id, name: row.name, icon: row.icon, createdAt: row.created_at };
-}
-function toLog(row: LogRow): HabitLog {
-  return { id: row.id, habitId: row.habit_id, date: row.date, completedAt: row.completed_at };
-}
-
-// ────────────────────────────────────────────────────────────────────
-
-export default function Home() {
-  const supabase = useMemo(() => createClient(), []);
-
-  // ── Auth ──────────────────────────────────────────────────────────
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // ── タブ ─────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<TabId>('home');
-
-  // ── データ ───────────────────────────────────────────────────────
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [logs, setLogs] = useState<HabitLog[]>([]);
-  const [dataLoading, setDataLoading] = useState(false);
-  const [dbError, setDbError] = useState('');
-
-  // ── UI 状態 ──────────────────────────────────────────────────────
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [report, setReport] = useState<WeeklyReportData | null>(null);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [reportError, setReportError] = useState('');
-  const [toast, setToast] = useState<{ message: string; isSpecial: boolean } | null>(null);
-  const [signOutLoading, setSignOutLoading] = useState(false);
-
-  // ── 通知設定 ──────────────────────────────────────────────────────
-  const {
-    permission: notifPermission,
-    settings: notifSettings,
-    saving: notifSaving,
-    saveMsg: notifSaveMsg,
-    pushStatus,
-    requestPermission,
-    sendTestNotification,
-    saveSettings: saveNotifSettings,
-  } = useNotification(supabase, user?.id);
-
-  // ── 認証状態の監視 ───────────────────────────────────────────────
-  // onAuthStateChange は初回マウント時に必ず INITIAL_SESSION を発火するため
-  // getUser() による二重リクエストは不要。ここ1本で初期化も変化検知も行う。
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, [supabase]);
-
-  // ── ログイン後にデータロード ─────────────────────────────────────
-  useEffect(() => {
-    if (!user) {
-      setHabits([]);
-      setLogs([]);
-      return;
-    }
-    loadData();
-    setReport(getWeeklyReport());
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadData() {
-    setDataLoading(true);
-    setDbError('');
-    try {
-      const [{ data: habitRows, error: hErr }, { data: logRows, error: lErr }] =
-        await Promise.all([
-          supabase.from('habits').select('*').order('created_at'),
-          supabase.from('habit_logs').select('*').order('date'),
-        ]);
-      if (hErr) throw hErr;
-      if (lErr) throw lErr;
-      setHabits((habitRows ?? []).map(toHabit));
-      setLogs((logRows ?? []).map(toLog));
-    } catch {
-      setDbError('データの読み込みに失敗しました。再読み込みしてください。');
-    } finally {
-      setDataLoading(false);
-    }
-  }
-
-  // ── 習慣の追加 ────────────────────────────────────────────────────
-  async function handleAddHabit(name: string, icon: string) {
-    if (!user || habits.length >= MAX_HABITS) return;
-    setShowAddForm(false);
-    const { data, error } = await supabase
-      .from('habits')
-      .insert({ name, icon, user_id: user.id })
-      .select()
-      .single();
-    if (error) {
-      setToast({ message: '習慣の追加に失敗しました', isSpecial: false });
-      return;
-    }
-    setHabits((prev) => [...prev, toHabit(data as HabitRow)]);
-  }
-
-  // ── 習慣の削除（habit_logs は FK cascade で自動削除） ────────────
-  async function handleDeleteHabit(habitId: string) {
-    const { error } = await supabase.from('habits').delete().eq('id', habitId);
-    if (error) {
-      setToast({ message: '削除に失敗しました', isSpecial: false });
-      return;
-    }
-    setHabits((prev) => prev.filter((h) => h.id !== habitId));
-    setLogs((prev) => prev.filter((l) => l.habitId !== habitId));
-  }
-
-  const handleCloseToast = useCallback(() => setToast(null), []);
-
-  // ── 習慣の完了トグル ──────────────────────────────────────────────
-  async function handleToggle(habitId: string) {
-    if (!user) return;
-    const today = getToday();
-    const alreadyDone = isCompletedToday(habitId, logs);
-
-    if (alreadyDone) {
-      // 取り消し
-      const { error } = await supabase
-        .from('habit_logs')
-        .delete()
-        .eq('habit_id', habitId)
-        .eq('date', today);
-      if (error) {
-        setToast({ message: '記録の取り消しに失敗しました', isSpecial: false });
-        return;
-      }
-      setLogs((prev) => prev.filter((l) => !(l.habitId === habitId && l.date === today)));
-    } else {
-      // 完了記録
-      const { data, error } = await supabase
-        .from('habit_logs')
-        .insert({ habit_id: habitId, user_id: user.id, date: today })
-        .select()
-        .single();
-      if (error) {
-        setToast({ message: '記録の保存に失敗しました', isSpecial: false });
-        return;
-      }
-      const updatedLogs = [...logs, toLog(data as LogRow)];
-      setLogs(updatedLogs);
-
-      // 全完了チェック
-      const nowCompleted = habits.filter((h) => isCompletedToday(h.id, updatedLogs)).length;
-      if (nowCompleted === habits.length) {
-        setToast({ message: '🎉 全部完了！今日もよくできました！', isSpecial: true });
-      } else {
-        const habit = habits.find((h) => h.id === habitId);
-        if (habit) {
-          setToast({ message: `${habit.icon} ${habit.name} 完了！ +10 XP`, isSpecial: false });
-        }
-      }
-    }
-  }
-
-  // ── AIレポート生成 ────────────────────────────────────────────────
-  async function handleGenerateReport() {
-    if (habits.length === 0) return;
-    const today = getToday();
-    if (report?.generatedAt && report.generatedAt.startsWith(today)) return;
-
-    setLoadingReport(true);
-    setReportError('');
-
-    const days = getPast7Days();
-    const habitStats = habits.map((habit) => ({
-      id: habit.id,
-      name: habit.name,
-      icon: habit.icon,
-      completedDays: days.filter((day) =>
-        logs.some((l) => l.habitId === habit.id && l.date === day)
-      ).length,
-    }));
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ habits: habitStats }),
-      });
-      if (!res.ok) throw new Error('レポート生成に失敗しました');
-      const data = await res.json();
-      const newReport: WeeklyReportData = {
-        generatedAt: new Date().toISOString(),
-        content: data.report,
-        weekStart: days[0],
-        weekEnd: days[6],
-      };
-      setReport(newReport);
-      saveWeeklyReport(newReport);
-    } catch {
-      setReportError('レポートの生成に失敗しました。APIキーを確認してください。');
-    } finally {
-      setLoadingReport(false);
-    }
-  }
-
-  // ── サインアウト ─────────────────────────────────────────────────
-  async function handleSignOut() {
-    setSignOutLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
-    setHabits([]);
-    setLogs([]);
-    setReport(null);
-    setSignOutLoading(false);
-  }
-
-  // ── 派生値 ───────────────────────────────────────────────────────
-  const completedToday = habits.filter((h) => isCompletedToday(h.id, logs)).length;
-  const overallStreak = getOverallStreak(logs);
-  const { level, xpInLevel, xpForNext } = getLevelProgress(logs);
-  const monthlyRate = getMonthlyRate(logs, habits);
-
-  // ── 認証ローディング ─────────────────────────────────────────────
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center">
-        <p className="text-gray-400 text-sm animate-pulse">読み込み中...</p>
-      </div>
-    );
-  }
-
-  // ── 未ログイン → 認証フォーム ────────────────────────────────────
-  if (!user) {
-    return <AuthForm supabase={supabase} />;
-  }
-
-  // ── メインアプリ ─────────────────────────────────────────────────
+/* ── SVG アイコン（チェックマーク） ─────────────────── */
+function CheckIcon({ size = 24, strokeWidth = 2.5 }: { size?: number; strokeWidth?: number }) {
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
-      {/* トースト通知 */}
-      {toast && (
-        <Toast message={toast.message} isSpecial={toast.isSpecial} onClose={handleCloseToast} />
-      )}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="white"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
-      {/* DB エラーバナー */}
-      {dbError && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-center gap-3">
-          <p className="text-xs text-red-600">{dbError}</p>
-          <button
-            onClick={loadData}
-            className="text-xs font-semibold text-red-500 underline hover:text-red-700 transition-colors"
-          >
-            再試行
-          </button>
-        </div>
-      )}
+/* ── アプリアイコン（丸角正方形＋チェック） ─────────── */
+function AppIcon({ size = 140, radius = 'rounded-[38px]' }: { size?: number; radius?: string }) {
+  return (
+    <div
+      className={`relative flex items-center justify-center bg-gradient-to-br from-green-400 to-green-500 ${radius} overflow-hidden`}
+      style={{
+        width: size,
+        height: size,
+        boxShadow: '0 16px 48px rgba(34,197,94,0.30)',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-transparent pointer-events-none" />
+      <CheckIcon size={Math.round(size * 0.52)} strokeWidth={2.5} />
+    </div>
+  );
+}
 
-      {/* タブコンテンツ（データロード中は薄く）*/}
-      <div className={`pb-20 transition-opacity duration-200 ${dataLoading ? 'opacity-50 pointer-events-none' : ''}`}>
-        {activeTab === 'home' && (
-          <HomeTab
-            habits={habits}
-            logs={logs}
-            level={level}
-            xpInLevel={xpInLevel}
-            xpForNext={xpForNext}
-            overallStreak={overallStreak}
-            completedToday={completedToday}
-            report={report}
-            loadingReport={loadingReport}
-            reportError={reportError}
-            showAddForm={showAddForm}
-            canAddMore={habits.length < MAX_HABITS}
-            onToggle={handleToggle}
-            onDelete={handleDeleteHabit}
-            onAddHabit={handleAddHabit}
-            onShowAddForm={() => setShowAddForm(true)}
-            onCancelAddForm={() => setShowAddForm(false)}
-            onGenerateReport={handleGenerateReport}
-          />
-        )}
-        {activeTab === 'stats' && (
-          <StatsTab
-            habits={habits}
-            logs={logs}
-            level={level}
-            xpInLevel={xpInLevel}
-            xpForNext={xpForNext}
-            overallStreak={overallStreak}
-            monthlyRate={monthlyRate}
-          />
-        )}
-        {activeTab === 'coach' && (
-          <CoachTab
-            habits={habits}
-            logs={logs}
-            report={report}
-            loadingReport={loadingReport}
-            reportError={reportError}
-            onGenerateReport={handleGenerateReport}
-            onGoHome={() => setActiveTab('home')}
-          />
-        )}
-        {activeTab === 'settings' && (
-          <SettingsTab
-            habits={habits}
-            logs={logs}
-            showAddForm={showAddForm}
-            canAddMore={habits.length < MAX_HABITS}
-            onAddHabit={handleAddHabit}
-            onDeleteHabit={handleDeleteHabit}
-            onGoHome={() => setActiveTab('home')}
-            onShowAddForm={() => setShowAddForm(true)}
-            onCancelAddForm={() => setShowAddForm(false)}
-            onSignOut={handleSignOut}
-            signOutLoading={signOutLoading}
-            userEmail={user.email}
-            notifPermission={notifPermission}
-            notifSettings={notifSettings}
-            notifSaving={notifSaving}
-            notifSaveMsg={notifSaveMsg}
-            pushStatus={pushStatus}
-            onRequestPermission={requestPermission}
-            onTestNotification={sendTestNotification}
-            onSendPushTest={() => { console.log('[page] onSendPushTest callback fired'); }}
-            onSaveNotifSettings={saveNotifSettings}
-          />
-        )}
+/* ── 共通CTAボタン ──────────────────────────────────── */
+function CTAButton({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-3 bg-gradient-to-r from-green-400 to-green-500 text-white font-bold text-base rounded-full px-12 py-5 transition-all duration-200 hover:-translate-y-1 hover:brightness-105 active:translate-y-0 active:scale-[0.97]"
+      style={{ boxShadow: '0 14px 44px rgba(34,197,94,0.38)' }}
+    >
+      {children}
+      <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-sm leading-none">→</span>
+    </Link>
+  );
+}
+
+/* ── ヒーローセクション ──────────────────────────────── */
+function HeroSection() {
+  return (
+    <section className="relative flex flex-col items-center justify-center text-center px-6 pt-32 pb-40 overflow-hidden bg-white">
+      {/* 背景グラデーション光 */}
+      <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(ellipse_70%_55%_at_50%_0%,rgba(74,222,128,0.11)_0%,transparent_70%)] pointer-events-none" />
+
+      {/* アイコン＋波紋 */}
+      <div className="relative w-[140px] h-[140px] mb-14 flex items-center justify-center">
+        <div className="animate-ripple-1 absolute inset-[-20px] rounded-full border border-green-300/40 pointer-events-none" />
+        <div className="animate-ripple-2 absolute inset-[-40px] rounded-full border border-green-300/25 pointer-events-none" />
+        <AppIcon size={140} radius="rounded-[38px]" />
       </div>
 
-      {/* ボトムナビゲーション */}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* バッジ */}
+      <span className="inline-flex items-center gap-2 bg-green-50 text-green-600 text-xs font-semibold tracking-widest uppercase rounded-full px-4 py-1.5 mb-8 select-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+        習慣管理アプリ
+      </span>
+
+      {/* 見出し */}
+      <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+        <span className="bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+          1タップ
+        </span>
+        で、<br />習慣は続けやすくなる。
+      </h1>
+
+      {/* サブコピー */}
+      <p className="text-gray-500 text-base sm:text-lg mb-9 max-w-xs mx-auto leading-relaxed">
+        記録はカンタン。続けることが<br />
+        自然と気持ちよくなる。
+      </p>
+
+      {/* 3バリュープロップ — pill badge */}
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+        {['1タップで記録', '続けた日が見える', '通知で忘れにくい'].map((v) => (
+          <span
+            key={v}
+            className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-100 rounded-full px-3.5 py-1.5 text-xs font-medium text-gray-600"
+          >
+            <span className="w-1 h-1 rounded-full bg-green-500 inline-block flex-shrink-0" />
+            {v}
+          </span>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <CTAButton href="/app">TapHabitをはじめる</CTAButton>
+
+      <p className="mt-6 text-xs text-gray-400">無料で使えます • 登録60秒</p>
+    </section>
+  );
+}
+
+/* ── Featuresセクション ──────────────────────────────── */
+const features = [
+  {
+    emoji: '✅',
+    title: '1タップで完了',
+    desc: '難しい操作はゼロ。チェックするだけで記録完了。習慣の壁を限りなく低くしました。',
+  },
+  {
+    emoji: '🔥',
+    title: '継続が目に見える',
+    desc: '連続記録日数でモチベーションが上がる。続けた事実が、次の一歩を自然に生み出します。',
+  },
+  {
+    emoji: '🌱',
+    title: '習慣が育つ感覚',
+    desc: '記録を重ねるほど、自分が変わっているのを実感。続けることが楽しくなっていきます。',
+  },
+];
+
+function FeaturesSection() {
+  return (
+    <section className="px-6 py-28 bg-gray-50/70" id="features">
+      <p className="text-center text-xs font-bold tracking-[0.14em] uppercase text-green-600 mb-4">
+        Features
+      </p>
+      <h2 className="text-center text-3xl sm:text-4xl font-extrabold tracking-tight leading-snug text-gray-900 mb-3">
+        続けるのが<br />気持ちいい理由
+      </h2>
+      <p className="text-center text-gray-400 mb-14 text-sm">
+        シンプルだから、毎日続く。
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="bg-white rounded-3xl px-8 py-9 transition-all duration-200 hover:-translate-y-1"
+            style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.05)' }}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-2xl mb-6">
+              {f.emoji}
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-2 tracking-tight">{f.title}</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ── Stepsセクション ─────────────────────────────────── */
+const steps = [
+  {
+    n: '1',
+    title: '習慣を追加する',
+    desc: '続けたいことを入力するだけ。「運動」「読書」「水を飲む」——小さな習慣から始めましょう。',
+  },
+  {
+    n: '2',
+    title: '毎日タップして記録',
+    desc: 'できたらチェック。ただそれだけ。1タップの軽さが、継続のカギです。',
+  },
+  {
+    n: '3',
+    title: '自然と続くようになる',
+    desc: '記録が積み重なるほど、やらないことが気持ち悪くなる。それが本当の習慣化です。',
+  },
+];
+
+function StepsSection() {
+  return (
+    <section className="px-6 py-28 bg-white" id="how">
+      <p className="text-center text-xs font-bold tracking-[0.14em] uppercase text-green-600 mb-4">
+        How it works
+      </p>
+      <h2 className="text-center text-3xl sm:text-4xl font-extrabold tracking-tight leading-snug text-gray-900 mb-3">
+        使い方は<br />たった3ステップ
+      </h2>
+      <p className="text-center text-gray-400 mb-14 text-sm">
+        考えるより先に、体が動く。
+      </p>
+
+      <div className="max-w-lg mx-auto relative">
+        <div className="absolute left-[27px] top-14 bottom-14 w-0.5 bg-gradient-to-b from-green-400 to-green-500 opacity-20" />
+
+        {steps.map((s, i) => (
+          <div key={i} className="flex items-start gap-6 py-8">
+            <div
+              className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center text-white text-xl font-extrabold relative z-10"
+              style={{ boxShadow: '0 4px 16px rgba(34,197,94,0.28)' }}
+            >
+              {s.n}
+            </div>
+            <div className="pt-2">
+              <h3 className="text-lg font-bold text-gray-900 mb-1.5 tracking-tight">{s.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ── CTAセクション ───────────────────────────────────── */
+function CTASection() {
+  return (
+    <section
+      className="px-6 py-32 text-center"
+      id="cta"
+      style={{
+        background: 'linear-gradient(160deg, #F0FDF4 0%, rgba(220,252,231,0.50) 100%)',
+      }}
+    >
+      <div className="flex justify-center mb-10">
+        <AppIcon size={96} radius="rounded-[26px]" />
+      </div>
+
+      <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-snug text-gray-900 mb-4">
+        今日の1タップが、<br />明日の自分をつくる。
+      </h2>
+      <p className="text-gray-500 text-sm mb-11 leading-relaxed">
+        まずは1つの習慣から。<br className="sm:hidden" />無料で始められます。
+      </p>
+
+      <CTAButton href="/app">TapHabitをはじめる</CTAButton>
+
+      <p className="mt-6 text-xs text-gray-400">無料 • 登録60秒 • いつでも退会可</p>
+    </section>
+  );
+}
+
+/* ── ナビゲーション ──────────────────────────────────── */
+function Nav() {
+  return (
+    <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-black/[0.04]">
+      <Link href="/" className="flex items-center gap-2.5 font-bold text-gray-900 text-lg tracking-tight no-underline">
+        <span
+          className="w-8 h-8 rounded-[9px] bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center flex-shrink-0"
+          style={{ boxShadow: '0 2px 8px rgba(34,197,94,0.30)' }}
+        >
+          <CheckIcon size={16} strokeWidth={3} />
+        </span>
+        TapHabit
+      </Link>
+      <Link
+        href="/app"
+        className="text-sm font-semibold text-white bg-gradient-to-r from-green-400 to-green-500 rounded-full px-5 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:brightness-105 active:scale-[0.97]"
+        style={{ boxShadow: '0 4px 14px rgba(34,197,94,0.28)' }}
+      >
+        TapHabitをはじめる
+      </Link>
+    </nav>
+  );
+}
+
+/* ── フッター ────────────────────────────────────────── */
+function Footer() {
+  return (
+    <footer className="px-6 py-10 text-center border-t border-black/[0.04]">
+      <div className="inline-flex items-center gap-2 font-bold text-gray-800 mb-3">
+        <span
+          className="w-6 h-6 rounded-[7px] bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center flex-shrink-0"
+          style={{ boxShadow: '0 2px 6px rgba(34,197,94,0.25)' }}
+        >
+          <CheckIcon size={12} strokeWidth={3} />
+        </span>
+        TapHabit
+      </div>
+      <p className="text-xs text-gray-400">© 2026 TapHabit. 1タップで続く習慣。</p>
+    </footer>
+  );
+}
+
+/* ── ページ本体 ──────────────────────────────────────── */
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-white antialiased">
+      <Nav />
+      <HeroSection />
+      <FeaturesSection />
+      <StepsSection />
+      <CTASection />
+      <Footer />
     </div>
   );
 }

@@ -146,8 +146,8 @@ export default function HomeTab({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-indigo-100 rounded-full px-3 py-1">
-            <span className="text-xs font-bold text-indigo-600">Lv.{level}</span>
+          <div className="bg-green-100 rounded-full px-3 py-1">
+            <span className="text-xs font-bold text-green-700">Lv.{level}</span>
           </div>
           <div className="bg-orange-100 rounded-full px-3 py-1">
             <span className="text-xs font-semibold text-orange-400">🔥{overallStreak}日</span>
@@ -157,8 +157,8 @@ export default function HomeTab({
 
       {/* ── ① 今日まずこれ CTA（習慣あり・未完了あり） ── */}
       {recommended && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-4 animate-fadeIn">
-          <p className="text-xs font-bold text-indigo-500 mb-2 tracking-wide">今日まずこれ</p>
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4 animate-fadeIn">
+          <p className="text-xs font-bold text-green-600 mb-2 tracking-wide">今日まずこれ</p>
           <div className="flex items-center gap-3">
             <span className="text-2xl flex-shrink-0">{recommended.habit.icon}</span>
             <div className="flex-1 min-w-0">
@@ -167,7 +167,7 @@ export default function HomeTab({
             </div>
             <button
               onClick={() => onToggle(recommended.habit.id)}
-              className="flex-shrink-0 w-12 h-12 rounded-full bg-indigo-500 text-white text-xl font-bold hover:bg-indigo-600 transition-colors active:scale-95 flex items-center justify-center"
+              className="flex-shrink-0 w-12 h-12 rounded-full bg-green-500 text-white text-xl font-bold hover:bg-green-600 transition-colors active:scale-95 flex items-center justify-center"
               aria-label={`${recommended.habit.name}を完了`}
             >
               ○
@@ -206,8 +206,8 @@ export default function HomeTab({
 
       {/* ── ③ 今やることカード（完了後も継続促進） ── */}
       {total > 0 && completedToday > 0 && (
-        <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm border-l-4 border-indigo-500 animate-fadeIn">
-          <p className="text-xs font-bold text-indigo-500 mb-2 tracking-wide">今やること</p>
+        <div className="bg-white rounded-2xl p-4 mb-3 shadow-sm border-l-4 border-green-500 animate-fadeIn">
+          <p className="text-xs font-bold text-green-600 mb-2 tracking-wide">今やること</p>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm text-gray-700">
               <span className="text-emerald-500 font-bold">✓</span>
@@ -217,7 +217,7 @@ export default function HomeTab({
                   : `まずは1回。あと${total - completedToday}つ`}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-indigo-600 font-semibold">
+            <div className="flex items-center gap-2 text-sm text-green-600 font-semibold">
               <span>⭐</span>
               <span>
                 {completedToday === total
@@ -241,7 +241,7 @@ export default function HomeTab({
                 completedToday === total
                   ? 'text-emerald-500'
                   : xpToNext <= 20
-                  ? 'text-indigo-600'
+                  ? 'text-green-600'
                   : 'text-gray-400'
               }`}
             >
@@ -254,7 +254,7 @@ export default function HomeTab({
             <div
               data-testid="progress-bar"
               className={`h-2.5 rounded-full transition-all duration-700 ${
-                completionRate === 100 ? 'bg-emerald-400' : 'bg-indigo-500'
+                completionRate === 100 ? 'bg-emerald-400' : 'bg-green-500'
               }`}
               style={{ width: completionRate > 0 ? `${completionRate}%` : '0%' }}
             />
@@ -268,13 +268,13 @@ export default function HomeTab({
           className={`rounded-xl px-3 py-2 mb-4 flex items-center gap-2 ${
             isEvening && completedToday < total
               ? 'bg-amber-50 border border-amber-200'
-              : 'bg-indigo-50 border border-indigo-100'
+              : 'bg-green-50 border border-green-100'
           }`}
         >
           <span className="text-base">🤖</span>
           <p
             className={`text-xs font-medium ${
-              isEvening && completedToday < total ? 'text-amber-700' : 'text-indigo-700'
+              isEvening && completedToday < total ? 'text-amber-700' : 'text-green-700'
             }`}
           >
             {actionMessage}
@@ -303,7 +303,7 @@ export default function HomeTab({
             data-testid="generate-report-btn"
             onClick={onGenerateReport}
             disabled={loadingReport || reportGeneratedToday}
-            className="w-full bg-indigo-500 text-white rounded-2xl py-3 font-semibold text-sm hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-green-500 text-white rounded-2xl py-3 font-semibold text-sm hover:bg-green-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {loadingReport
               ? '🔄 AIが分析中...'

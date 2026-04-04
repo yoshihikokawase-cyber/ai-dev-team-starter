@@ -30,7 +30,7 @@ export default function AddHabitForm({ onAdd, onCancel }: Props) {
   return (
     <div
       data-testid="add-habit-form"
-      className="bg-white rounded-xl border-2 border-blue-200 p-4 mb-4"
+      className="bg-white rounded-xl border-2 border-green-200 p-4 mb-4"
     >
       <h3 className="font-semibold text-gray-700 mb-3">新しい習慣を追加</h3>
       <form onSubmit={handleSubmit}>
@@ -43,7 +43,7 @@ export default function AddHabitForm({ onAdd, onCancel }: Props) {
               onClick={() => setIcon(ic)}
               className={`text-2xl p-1 rounded-lg transition-all ${
                 icon === ic
-                  ? 'bg-blue-100 scale-110 ring-2 ring-blue-400'
+                  ? 'bg-green-100 scale-110 ring-2 ring-green-400'
                   : 'hover:bg-gray-100'
               }`}
               aria-label={`アイコン ${ic} を選択`}
@@ -63,7 +63,7 @@ export default function AddHabitForm({ onAdd, onCancel }: Props) {
             setError('');
           }}
           placeholder="習慣名を入力（例: 毎朝ストレッチ）"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-blue-400"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-green-400"
           maxLength={50}
         />
 
@@ -77,7 +77,7 @@ export default function AddHabitForm({ onAdd, onCancel }: Props) {
           <button
             data-testid="add-habit-submit"
             type="submit"
-            className="flex-1 bg-blue-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-blue-600 transition-colors"
+            className="flex-1 bg-green-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-green-600 transition-colors"
           >
             追加する
           </button>

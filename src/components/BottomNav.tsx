@@ -26,7 +26,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all ${
-                isActive ? 'text-indigo-500' : 'text-gray-400 hover:text-gray-600'
+                isActive ? 'text-green-500' : 'text-gray-400 hover:text-gray-600'
               }`}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
@@ -40,7 +40,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
               </span>
               <span
                 className={`text-[10px] font-medium ${
-                  isActive ? 'text-indigo-500' : 'text-gray-400'
+                  isActive ? 'text-green-500' : 'text-gray-400'
                 }`}
               >
                 {tab.label}

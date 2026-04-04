@@ -49,10 +49,10 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
   return (
     <div
       data-testid="habit-card"
-      className={`relative p-4 rounded-2xl border-2 transition-all duration-300 ${
+      className={`relative p-4 rounded-2xl transition-all duration-300 ${
         completed
-          ? 'border-emerald-300 bg-emerald-50 shadow-sm'
-          : 'border-gray-100 bg-white hover:border-indigo-200 shadow-sm'
+          ? 'bg-emerald-50 shadow-md shadow-emerald-100'
+          : 'bg-white shadow-sm hover:shadow-md'
       }`}
     >
       {/* 完了瞬間の緑フラッシュオーバーレイ */}
@@ -62,7 +62,7 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
 
       {/* +10 XP フロートテキスト */}
       {showXP && (
-        <span className="absolute top-2 right-16 text-indigo-500 font-bold text-xs animate-xpFloat pointer-events-none select-none">
+        <span className="absolute top-2 right-16 text-green-600 font-bold text-xs animate-xpFloat pointer-events-none select-none">
           +10 XP
         </span>
       )}
@@ -77,7 +77,7 @@ export default function HabitCard({ habit, logs, onToggle, onDelete }: Props) {
             className={`w-14 h-14 rounded-full text-2xl font-bold transition-all duration-200 flex items-center justify-center ${
               completed
                 ? 'bg-emerald-400 text-white shadow-lg'
-                : 'bg-white border-2 border-indigo-300 text-indigo-400 shadow-sm hover:border-indigo-400 hover:bg-indigo-50 active:scale-95 animate-pulseRing'
+                : 'bg-white border-2 border-green-300 text-green-500 shadow-sm hover:border-green-400 hover:bg-green-50 active:scale-95 animate-pulseRing'
             } ${bouncing ? 'animate-checkBounce' : ''}`}
             aria-label={completed ? '記録済み（タップで取り消し）' : '今日の記録をする'}
           >
