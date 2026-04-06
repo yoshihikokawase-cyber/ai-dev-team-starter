@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Habit, HabitLog } from '@/lib/types';
 import { getStreak } from '@/lib/storage';
+import { APP_VERSION } from '@/lib/appVersion';
 import AddHabitForm from '@/components/AddHabitForm';
 import type { NotifPermission, NotificationSettings, PushStatus } from '@/hooks/useNotification';
 import type { CoachTone } from '@/components/HomeTab';
@@ -283,7 +284,7 @@ export default function SettingsTab({
         <h3 className="text-sm font-semibold text-gray-700 mb-3">ℹ️ アプリ情報</h3>
         <div className="flex flex-col gap-2">
           {[
-            { label: 'バージョン', value: 'Day22 / v2.7' },
+            { label: 'バージョン', value: APP_VERSION },
             { label: 'データ保存', value: 'Supabase (クラウド)' },
             { label: '登録習慣数', value: `${habits.length} / 10` },
           ].map(({ label, value }) => (
