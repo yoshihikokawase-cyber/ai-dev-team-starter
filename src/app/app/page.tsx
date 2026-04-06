@@ -17,6 +17,7 @@ import {
 import Toast from '@/components/Toast';
 import BottomNav, { TabId } from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
+import type { CoachTone } from '@/components/HomeTab';
 import StatsTab from '@/components/StatsTab';
 import CoachTab from '@/components/CoachTab';
 import SettingsTab from '@/components/SettingsTab';
@@ -24,6 +25,7 @@ import AuthForm from '@/components/AuthForm';
 import { useNotification } from '@/hooks/useNotification';
 
 const MAX_HABITS = 10;
+const COACH_TONE_KEY = 'taphabit_coach_tone';
 
 // ─── Supabase 行型 → アプリ型 変換 ──────────────────────────────────
 
@@ -74,6 +76,17 @@ export default function AppPage() {
   const [reportError, setReportError] = useState('');
   const [toast, setToast] = useState<{ message: string; isSpecial: boolean } | null>(null);
   const [signOutLoading, setSignOutLoading] = useState(false);
+
+  // ── 応援スタイル（localStorage 永続化） ──────────────────────────
+  const [coachTone, setCoachTone] = useState<CoachTone>(() => {
+    if (typeof window === 'undefined') return 'soft';
+    return (localStorage.getItem(COACH_TONE_KEY) as CoachTone) || 'soft';
+  });
+
+  function handleCoachToneChange(tone: CoachTone) {
+    setCoachTone(tone);
+    localStorage.setItem(COACH_TONE_KEY, tone);
+  }
 
   // ── 通知設定 ──────────────────────────────────────────────────────
   const {
@@ -317,6 +330,7 @@ export default function AppPage() {
             onShowAddForm={() => setShowAddForm(true)}
             onCancelAddForm={() => setShowAddForm(false)}
             onGenerateReport={handleGenerateReport}
+            coachTone={coachTone}
           />
         )}
         {activeTab === 'stats' && (
@@ -364,6 +378,8 @@ export default function AppPage() {
             onTestNotification={sendTestNotification}
             onSendPushTest={() => { console.log('[page] onSendPushTest callback fired'); }}
             onSaveNotifSettings={saveNotifSettings}
+            coachTone={coachTone}
+            onCoachToneChange={handleCoachToneChange}
           />
         )}
       </div>

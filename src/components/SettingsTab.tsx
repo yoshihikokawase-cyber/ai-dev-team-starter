@@ -5,6 +5,7 @@ import { Habit, HabitLog } from '@/lib/types';
 import { getStreak } from '@/lib/storage';
 import AddHabitForm from '@/components/AddHabitForm';
 import type { NotifPermission, NotificationSettings, PushStatus } from '@/hooks/useNotification';
+import type { CoachTone } from '@/components/HomeTab';
 
 interface Props {
   habits: Habit[];
@@ -28,6 +29,8 @@ interface Props {
   onTestNotification: () => void;
   onSendPushTest: () => void;
   onSaveNotifSettings: (s: NotificationSettings) => void;
+  coachTone: CoachTone;
+  onCoachToneChange: (t: CoachTone) => void;
 }
 
 export default function SettingsTab({
@@ -36,6 +39,7 @@ export default function SettingsTab({
   onSignOut, signOutLoading, userEmail,
   notifPermission, notifSettings, notifSaving, notifSaveMsg, pushStatus,
   onRequestPermission, onTestNotification, onSendPushTest, onSaveNotifSettings,
+  coachTone, onCoachToneChange,
 }: Props) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pushTestMsg, setPushTestMsg] = useState('');
@@ -230,6 +234,39 @@ export default function SettingsTab({
             )}
           </div>
         )}
+      </div>
+
+      {/* ── 応援スタイル ── */}
+      <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">💬 応援スタイル</h3>
+        <p className="text-xs text-gray-400 mb-3">AIコーチのコメントのトーンを選べます</p>
+        <div className="flex gap-2">
+          {(
+            [
+              { key: 'soft'   as CoachTone, label: 'やさしく', desc: '安心感・許可を出す' },
+              { key: 'strong' as CoachTone, label: 'しっかり', desc: '少し背中を押す' },
+            ] as const
+          ).map(({ key, label, desc }) => (
+            <button
+              key={key}
+              onClick={() => onCoachToneChange(key)}
+              className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl transition-all duration-150 active:scale-95 ${
+                coachTone === key
+                  ? 'bg-green-50 ring-2 ring-green-400 ring-offset-1'
+                  : 'bg-gray-50 hover:bg-gray-100'
+              }`}
+              aria-pressed={coachTone === key}
+            >
+              <span className={`text-sm font-bold ${coachTone === key ? 'text-green-700' : 'text-gray-700'}`}>
+                {label}
+              </span>
+              <span className="text-xs text-gray-400">{desc}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2.5 text-center">
+          ※ しんどいときは、どちらも無理させません
+        </p>
       </div>
 
       {onSignOut && (

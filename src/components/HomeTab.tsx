@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Habit, HabitLog, WeeklyReportData } from '@/lib/types';
 import HabitCard from '@/components/HabitCard';
 import AddHabitForm from '@/components/AddHabitForm';
 import WeeklySummary from '@/components/WeeklySummary';
 import WeeklyReport from '@/components/WeeklyReport';
-import { getStreak, getPast7Days } from '@/lib/storage';
+import { getStreak, getPast7Days, getToday } from '@/lib/storage';
+import { getCoachComment } from '@/lib/coach/getCoachComment';
+import { getWeeklyMoodTrend } from '@/lib/coach/getWeeklyMoodTrend';
+import { getOrCreateCoachVariant } from '@/lib/coach/getOrCreateCoachVariant';
+import { saveTodayMood } from '@/lib/coach/moodHistory';
 
 interface Props {
   habits: Habit[];
@@ -27,6 +31,7 @@ interface Props {
   onShowAddForm: () => void;
   onCancelAddForm: () => void;
   onGenerateReport: () => void;
+  coachTone: CoachTone;
 }
 
 /**
@@ -108,26 +113,31 @@ function getActionMessage(
  *   普通    … 0.3 以上 0.6 未満
  *   悪い週  … 0.3 未満
  */
-function getWeeklyReflection(weekRate: number, mood: Mood | null): string {
+function getWeeklyReflection(weekRate: number, mood: Mood | null, tone: CoachTone): string {
   const isGoodWeek = weekRate >= 0.6;
   const isBadWeek  = weekRate < 0.3;
 
   if (isGoodWeek) {
+    // tired は必ず安心させる（良い週でも無理させない）
+    if (mood === 'tired')  return '今週はいい流れでした。今日は軽くで大丈夫です。';
     if (mood === 'good')   return 'この調子！積み上げが確実に力になっています。';
-    if (mood === 'tired')  return 'いい1週間でした。今日は充電の日でOK。';
     return 'いいペースです。このまま続けましょう。';
   }
 
   if (isBadWeek) {
-    if (mood === 'good')   return '今日から流れが変わります。まず1つ押してみましょう。';
-    if (mood === 'tired')  return '無理しなくていい。1つだけでもゼロより全然いい。';
-    return '少しペースが落ちても大丈夫。今日の1つが次につながります。';
+    // good なら流れを変えるメッセージ
+    if (mood === 'good')   return '今日から流れを変えられます。まず1ついきましょう。';
+    // tired なら責めず安心させる
+    if (mood === 'tired')  return '焦らなくていい。止めないことだけ意識しましょう。';
+    return tone === 'soft'
+      ? '少しペースが落ちても大丈夫。今日の1つが次につながります。'
+      : '今日1つ記録して、また積み上げを始めましょう。';
   }
 
   // 普通の週（30〜59%）
-  if (mood === 'good')   return '着実に続いています。今日は少し伸ばしてみましょう。';
   if (mood === 'tired')  return '続けているだけで十分。今日は守ることが正解です。';
-  return '安定したペースです。焦らず積み上げましょう。';
+  if (mood === 'good')   return '着実に続いています。今日は少し伸ばしてみましょう。';
+  return '焦らず積み上げています。このペースで十分です。';
 }
 
 // ─── 今日の状態 ────────────────────────────────────────────────────
@@ -140,11 +150,7 @@ const MOODS: { key: Mood; emoji: string; label: string }[] = [
   { key: 'tired',  emoji: '😞', label: 'ちょっとしんどい' },
 ];
 
-const MOOD_COMMENTS: Record<Mood, string> = {
-  good:   '今日は一段上を狙いましょう',
-  normal: '無理せず積み上げていきましょう',
-  tired:  '1分でもOK。ゼロにしないことが勝ちです',
-};
+export type CoachTone = 'soft' | 'strong';
 
 // ────────────────────────────────────────────────────────────────────
 
@@ -168,8 +174,16 @@ export default function HomeTab({
   onShowAddForm,
   onCancelAddForm,
   onGenerateReport,
+  coachTone,
 }: Props) {
   const [mood, setMood] = useState<Mood | null>(null);
+  const [coachVariant, setCoachVariant] = useState<'A' | 'B'>('A');
+  const [coachComment, setCoachComment] = useState<string>('');
+
+  // A/B variant は初回マウント時に確定（SSR安全）
+  useEffect(() => {
+    setCoachVariant(getOrCreateCoachVariant());
+  }, []);
 
   const total = habits.length;
   const completionRate = total > 0 ? Math.round((completedToday / total) * 100) : 0;
@@ -191,7 +205,23 @@ export default function HomeTab({
   const past7 = getPast7Days();
   const weekLogCount = logs.filter((l) => past7.includes(l.date)).length;
   const weekRate = total > 0 ? weekLogCount / (total * 7) : 0;
-  const weeklyReflection = getWeeklyReflection(weekRate, mood);
+  const weeklyReflection = getWeeklyReflection(weekRate, mood, coachTone);
+
+  // mood 選択時: コメント生成 + localStorage 保存
+  function handleMoodSelect(selected: Mood) {
+    setMood(selected);
+    const trend = getWeeklyMoodTrend();
+    const comment = getCoachComment({
+      mood: selected,
+      weekRate,
+      streakDays: overallStreak,
+      coachTone,
+      weeklyMoodTrend: trend,
+      variant: coachVariant,
+    });
+    setCoachComment(comment);
+    saveTodayMood(getToday(), selected, coachVariant, coachTone);
+  }
 
   return (
     <div className="max-w-md mx-auto px-4 pt-5 pb-4 animate-fadeIn">
@@ -221,7 +251,7 @@ export default function HomeTab({
           {MOODS.map(({ key, emoji, label }) => (
             <button
               key={key}
-              onClick={() => setMood(key)}
+              onClick={() => handleMoodSelect(key)}
               className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all duration-150 active:scale-95 ${
                 mood === key
                   ? 'bg-green-50 ring-2 ring-green-400 ring-offset-1'
@@ -240,9 +270,9 @@ export default function HomeTab({
             </button>
           ))}
         </div>
-        {mood && (
+        {mood && coachComment && (
           <div className="mt-3 px-3 py-2 bg-green-50 rounded-xl animate-fadeIn">
-            <p className="text-xs text-green-700 font-medium">{MOOD_COMMENTS[mood]}</p>
+            <p className="text-xs text-green-700 font-medium">{coachComment}</p>
           </div>
         )}
       </div>
