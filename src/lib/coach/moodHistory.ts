@@ -9,6 +9,11 @@ export type MoodHistoryEntry = {
   coachTone?: 'soft' | 'strong';
 };
 
+export type MoodLog = {
+  date: string;
+  mood: Mood;
+};
+
 /** 過去の mood 記録を取得（最大30件） */
 export function getMoodHistory(): MoodHistoryEntry[] {
   if (typeof window === 'undefined') return [];
@@ -18,6 +23,23 @@ export function getMoodHistory(): MoodHistoryEntry[] {
   } catch {
     return [];
   }
+}
+
+/** 今日の mood を返す（なければ null） */
+export function getTodayMood(today: string): Mood | null {
+  const entry = getMoodHistory().find((e) => e.date === today);
+  return entry?.mood ?? null;
+}
+
+/** 直近7日分の mood ログを返す（日付昇順） */
+export function getLast7DaysMood(): MoodLog[] {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  return getMoodHistory()
+    .filter((e) => e.date >= cutoffStr)
+    .map(({ date, mood }) => ({ date, mood }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** 今日の mood を保存（同日は上書き） */

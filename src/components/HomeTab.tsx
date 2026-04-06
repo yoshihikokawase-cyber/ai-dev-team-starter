@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Habit, HabitLog, WeeklyReportData } from '@/lib/types';
 import HabitCard from '@/components/HabitCard';
 import AddHabitForm from '@/components/AddHabitForm';
@@ -10,7 +10,7 @@ import { getStreak, getPast7Days, getToday } from '@/lib/storage';
 import { getCoachComment } from '@/lib/coach/getCoachComment';
 import { getWeeklyMoodTrend } from '@/lib/coach/getWeeklyMoodTrend';
 import { getOrCreateCoachVariant } from '@/lib/coach/getOrCreateCoachVariant';
-import { saveTodayMood } from '@/lib/coach/moodHistory';
+import { saveTodayMood, getTodayMood } from '@/lib/coach/moodHistory';
 
 interface Props {
   habits: Habit[];
@@ -179,11 +179,36 @@ export default function HomeTab({
   const [mood, setMood] = useState<Mood | null>(null);
   const [coachVariant, setCoachVariant] = useState<'A' | 'B'>('A');
   const [coachComment, setCoachComment] = useState<string>('');
+  const restoredRef = React.useRef(false);
 
-  // A/B variant は初回マウント時に確定（SSR安全）
+  // A/B variant を初回マウント時に確定（SSR安全）
   useEffect(() => {
     setCoachVariant(getOrCreateCoachVariant());
   }, []);
+
+  // logs・coachVariant・coachTone が揃った後に mood を復元（1回のみ）
+  useEffect(() => {
+    if (restoredRef.current) return;
+    const today = new Date().toISOString().split('T')[0];
+    const savedMood = getTodayMood(today);
+    if (!savedMood) return;
+    restoredRef.current = true;
+    setMood(savedMood);
+    const trend = getWeeklyMoodTrend();
+    const past7Days = getPast7Days();
+    const wRate = logs.length > 0
+      ? logs.filter((l) => past7Days.includes(l.date)).length / (habits.length * 7 || 1)
+      : 0;
+    const comment = getCoachComment({
+      mood: savedMood,
+      weekRate: wRate,
+      streakDays: overallStreak,
+      coachTone,
+      weeklyMoodTrend: trend,
+      variant: coachVariant,
+    });
+    setCoachComment(comment);
+  }, [logs, coachVariant, coachTone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = habits.length;
   const completionRate = total > 0 ? Math.round((completedToday / total) * 100) : 0;

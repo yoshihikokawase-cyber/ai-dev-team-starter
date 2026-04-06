@@ -1,7 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Habit, HabitLog } from '@/lib/types';
 import { getPast7Days } from '@/lib/storage';
+import { getLast7DaysMood } from '@/lib/coach/moodHistory';
+import type { MoodLog } from '@/lib/coach/moodHistory';
+import { getWeeklyMoodTrend } from '@/lib/coach/getWeeklyMoodTrend';
 
 interface Props {
   habits: Habit[];
@@ -15,18 +19,58 @@ interface Props {
 
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
-/**
- * レベルから「あなたは上位X%」ラベルを返す
- * ※ 実際のランキングデータがある場合はここを API 接続に差し替える
- */
-function getRankLabel(level: number): string {
-  if (level >= 15) return '上位5%';
-  if (level >= 10) return '上位10%';
-  if (level >= 7)  return '上位18%';
-  if (level >= 5)  return '上位30%';
-  if (level >= 3)  return '上位45%';
-  return '上位60%';
+type FlowState = {
+  label: string;
+  icon: string;
+  color: string;   // Tailwind text color
+  bg: string;      // Tailwind bg color
+};
+
+/** weekRate・streakDays・moodTrend から「今の流れ」を返す */
+function getFlowState(
+  weekRate: number,
+  streakDays: number,
+  moodTrend: ReturnType<typeof getWeeklyMoodTrend>
+): FlowState {
+  if (moodTrend === 'tired-heavy') {
+    return { label: '回復優先', icon: '🌱', color: 'text-amber-700', bg: 'bg-amber-50' };
+  }
+  if (weekRate >= 0.6 && streakDays >= 3) {
+    return { label: 'いい流れ', icon: '🌊', color: 'text-green-700', bg: 'bg-green-50' };
+  }
+  if (weekRate >= 0.4 || streakDays >= 3) {
+    return { label: '安定中', icon: '📈', color: 'text-indigo-700', bg: 'bg-indigo-50' };
+  }
+  if (weekRate < 0.3 && streakDays === 0) {
+    return { label: '立て直し中', icon: '🔄', color: 'text-blue-700', bg: 'bg-blue-50' };
+  }
+  return { label: '安定中', icon: '📈', color: 'text-indigo-700', bg: 'bg-indigo-50' };
 }
+
+/** 今週 vs 先週の比較テキストを返す */
+function getWeekComparisonText(thisWeekCount: number, lastWeekCount: number): string {
+  const diff = thisWeekCount - lastWeekCount;
+  if (diff > 0) return `先週より +${diff}日 達成`;
+  if (diff === 0) return '先週と同じペース';
+  return `今週は少しゆっくり。でも戻せます`;
+}
+
+/** streakDays から次の達成ラインを返す */
+function getNextMilestone(streakDays: number, completedToday: boolean): string {
+  if (streakDays === 0) return completedToday ? '今日の1回で連続スタート！' : '今日やると連続スタートです';
+  const milestones = [3, 7, 14, 30, 60, 100];
+  const next = milestones.find((m) => m > streakDays);
+  if (!next) return `${streakDays}日継続中。この流れを続けよう`;
+  const diff = next - streakDays;
+  if (diff === 1) return `あと1日で${next}日継続`;
+  return `あと${diff}日で${next}日継続`;
+}
+
+const MOOD_CONFIG = {
+  good:   { emoji: '😊', label: '調子いい', bg: 'bg-green-100',  ring: 'ring-green-300',  text: 'text-green-700' },
+  normal: { emoji: '😐', label: 'ふつう',   bg: 'bg-gray-100',   ring: 'ring-gray-300',   text: 'text-gray-500'  },
+  tired:  { emoji: '😞', label: 'しんどい', bg: 'bg-amber-100',  ring: 'ring-amber-300',  text: 'text-amber-700' },
+} as const;
 
 /** 統計画面 */
 export default function StatsTab({
@@ -38,6 +82,12 @@ export default function StatsTab({
   overallStreak,
   monthlyRate,
 }: Props) {
+  const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
+
+  useEffect(() => {
+    setMoodLogs(getLast7DaysMood());
+  }, []);
+
   const today = new Date().toISOString().split('T')[0];
   const past7Days = getPast7Days();
   const totalXP = (level - 1) * 100 + xpInLevel;
@@ -63,7 +113,33 @@ export default function StatsTab({
       ? Math.round(weeklyData.reduce((s, d) => s + d.rate, 0) / weeklyData.length)
       : 0;
 
-  const rankLabel = getRankLabel(level);
+  // 日付 → mood のマップ
+  const moodByDate = Object.fromEntries(moodLogs.map((l) => [l.date, l.mood]));
+  const recordedCount = past7Days.filter((d) => moodByDate[d]).length;
+
+  // 先週（8〜14日前）の完了日数
+  const prev7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (7 + i));
+    return d.toISOString().split('T')[0];
+  });
+  const thisWeekCount = past7Days.filter((d) =>
+    logs.some((l) => l.date === d)
+  ).length;
+  const lastWeekCount = prev7Days.filter((d) =>
+    logs.some((l) => l.date === d)
+  ).length;
+
+  // 今日完了しているか
+  const completedToday = logs.some((l) => l.date === today);
+
+  // 今の流れ / 先週比較 / 次の達成ライン
+  const moodTrend = getWeeklyMoodTrend();
+  const weekRate = habits.length > 0 ? thisWeekCount / (habits.length * 7) : 0;
+  const flowState = getFlowState(weekRate, overallStreak, moodTrend);
+  const weekComparisonText = getWeekComparisonText(thisWeekCount, lastWeekCount);
+  const nextMilestone = getNextMilestone(overallStreak, completedToday);
+
 
   return (
     <div className="max-w-md mx-auto px-4 pt-6 pb-4 animate-fadeIn">
@@ -166,6 +242,64 @@ export default function StatsTab({
         )}
       </div>
 
+      {/* ── 今週の状態推移 ── */}
+      <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm font-semibold text-gray-700">🌡 今週の状態</span>
+          <span className="text-xs text-gray-400">
+            {recordedCount > 0 ? `${recordedCount}日分の記録` : '記録なし'}
+          </span>
+        </div>
+
+        <div className="flex justify-between gap-1">
+          {past7Days.map((date) => {
+            const d = new Date(date);
+            const dayLabel = DAY_LABELS[d.getDay()];
+            const mood = moodByDate[date] as keyof typeof MOOD_CONFIG | undefined;
+            const isToday = date === today;
+            const cfg = mood ? MOOD_CONFIG[mood] : null;
+
+            return (
+              <div key={date} className="flex-1 flex flex-col items-center gap-1.5">
+                {/* 状態アイコン */}
+                <div
+                  className={`w-full aspect-square rounded-xl flex items-center justify-center text-lg transition-all ${
+                    cfg
+                      ? `${cfg.bg} ring-1 ${cfg.ring}`
+                      : isToday
+                      ? 'bg-indigo-50 ring-1 ring-indigo-200'
+                      : 'bg-gray-50'
+                  }`}
+                >
+                  {cfg ? (
+                    <span role="img" aria-label={cfg.label}>{cfg.emoji}</span>
+                  ) : (
+                    <span className="text-gray-300 text-sm">·</span>
+                  )}
+                </div>
+                {/* 曜日 */}
+                <span
+                  className={`text-[10px] font-medium ${
+                    isToday ? 'text-indigo-500 font-bold' : 'text-gray-400'
+                  }`}
+                >
+                  {dayLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 凡例 */}
+        <div className="flex gap-3 mt-3 justify-center">
+          {(Object.entries(MOOD_CONFIG) as [keyof typeof MOOD_CONFIG, typeof MOOD_CONFIG[keyof typeof MOOD_CONFIG]][]).map(([, cfg]) => (
+            <span key={cfg.label} className={`text-[10px] ${cfg.text} flex items-center gap-1`}>
+              {cfg.emoji} {cfg.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* ── 今月サマリー ── */}
       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">📆 今月のサマリー</h3>
@@ -196,15 +330,28 @@ export default function StatsTab({
         </p>
       </div>
 
-      {/* ── ランキングバナー ── */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl p-4 text-white shadow-md">
-        <div className="flex items-center justify-between">
+      {/* ── 自分の流れカード ── */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+
+        {/* 今の流れ */}
+        <div className={`flex items-center gap-3 rounded-xl px-4 py-3 mb-3 ${flowState.bg}`}>
+          <span className="text-2xl">{flowState.icon}</span>
           <div>
-            <p className="text-xs opacity-75 mb-1">継続ランキング（推定）</p>
-            <p className="text-2xl font-bold">{rankLabel}</p>
-            <p className="text-xs opacity-60 mt-1">Lv.{level} · {totalXP} XP 獲得</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">今の流れ</p>
+            <p className={`text-lg font-bold ${flowState.color}`}>{flowState.label}</p>
           </div>
-          <span className="text-5xl">🏆</span>
+        </div>
+
+        {/* 先週比較 + 次の達成ライン */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3">
+            <span className="text-base">📅</span>
+            <p className="text-sm text-gray-700">{weekComparisonText}</p>
+          </div>
+          <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3">
+            <span className="text-base">🎯</span>
+            <p className="text-sm text-gray-700">{nextMilestone}</p>
+          </div>
         </div>
       </div>
     </div>
