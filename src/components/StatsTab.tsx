@@ -55,6 +55,20 @@ function getWeekComparisonText(thisWeekCount: number, lastWeekCount: number): st
   return `今週は少しゆっくり。でも戻せます`;
 }
 
+/** weekRate・streakDays・moodTrend から「流れを表す一言」を返す */
+function getWeekComment(
+  weekRate: number,
+  streakDays: number,
+  moodTrend: ReturnType<typeof getWeeklyMoodTrend>
+): string {
+  if (moodTrend === 'tired-heavy') return '無理せず続けよう';
+  if (weekRate >= 0.6 && streakDays >= 3) return 'いい流れです';
+  if (weekRate >= 0.6) return 'この調子でOK';
+  if (weekRate >= 0.4) return '着実に積んでます';
+  if (weekRate < 0.3 && streakDays === 0) return '少しずつ戻そう';
+  return '今日の1回が大事';
+}
+
 /** streakDays から次の達成ラインを返す */
 function getNextMilestone(streakDays: number, completedToday: boolean): string {
   if (streakDays === 0) return completedToday ? '今日の1回で連続スタート！' : '今日やると連続スタートです';
@@ -90,7 +104,11 @@ export default function StatsTab({
 
   const today = new Date().toISOString().split('T')[0];
   const past7Days = getPast7Days();
-  const totalXP = (level - 1) * 100 + xpInLevel;
+
+  // 今日の完了数
+  const todayCompletedCount = habits.filter((h) =>
+    logs.some((l) => l.habitId === h.id && l.date === today)
+  ).length;
 
   // 過去7日間の各日の達成数・達成率
   const weeklyData = past7Days.map((date) => {
@@ -139,6 +157,8 @@ export default function StatsTab({
   const flowState = getFlowState(weekRate, overallStreak, moodTrend);
   const weekComparisonText = getWeekComparisonText(thisWeekCount, lastWeekCount);
   const nextMilestone = getNextMilestone(overallStreak, completedToday);
+  const weekComment = getWeekComment(weekRate, overallStreak, moodTrend);
+  const totalCount = logs.length;
 
 
   return (
@@ -154,39 +174,29 @@ export default function StatsTab({
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
           <div className="text-xl font-semibold text-orange-400">🔥{overallStreak}</div>
-          <div className="text-xs text-gray-500 mt-1">つづいてる日数</div>
+          <div className="text-xs text-gray-500 mt-1">連続日数</div>
         </div>
         <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-          <div className="text-2xl font-bold text-indigo-500">Lv.{level}</div>
-          <div className="text-xs text-gray-500 mt-1">レベル</div>
+          <div className="text-xl font-bold text-green-500">
+            {todayCompletedCount}<span className="text-sm text-gray-400">/{habits.length}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">今日の完了</div>
         </div>
         <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-          <div className="text-2xl font-bold text-emerald-500">{monthlyRate}%</div>
+          <div className="text-xl font-bold text-emerald-500">{monthlyRate}%</div>
           <div className="text-xs text-gray-500 mt-1">今月達成率</div>
         </div>
       </div>
 
-      {/* ── XP・レベル進捗バー ── */}
-      <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-semibold text-gray-700">⭐ 経験値</span>
-          <span className="text-xs text-gray-400">合計 {totalXP} XP</span>
+      {/* ── 今週の記録 ── */}
+      <div className="bg-white rounded-2xl p-5 mb-4 shadow-sm">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">今週の記録</p>
+        <div className="flex items-end gap-2 mb-2">
+          <span className="text-5xl font-extrabold text-gray-900 leading-none">{thisWeekCount}</span>
+          <span className="text-lg text-gray-400 mb-1">/ 7日</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-indigo-500 w-12">Lv.{level}</span>
-          <div className="flex-1 bg-gray-100 rounded-full h-3">
-            <div
-              className="bg-indigo-500 h-3 rounded-full transition-all duration-700"
-              style={{ width: `${(xpInLevel / xpForNext) * 100}%` }}
-            />
-          </div>
-          <span className="text-xs font-bold text-indigo-400 w-12 text-right">
-            Lv.{level + 1}
-          </span>
-        </div>
-        <p className="text-xs text-gray-400 mt-1.5 text-center">
-          あと {xpForNext - xpInLevel} XP でレベルアップ
-        </p>
+        <p className="text-sm font-medium text-green-600 mb-3">{weekComment}</p>
+        <p className="text-xs text-gray-400">合計 {totalCount}回 達成</p>
       </div>
 
       {/* ── 週間グラフ ── */}
